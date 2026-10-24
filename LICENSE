@@ -1,5 +1,5 @@
 yupiter - Licensing
-----------------------
+-------------------
 
 yupiter is free software.  You may use, copy, modify and distribute
 it under your choice of one of the following three licenses:
@@ -19,7 +19,7 @@ In other words: you pick the license, per use, at your option.  Every
 recipient of the library may choose any of the three licenses.
 
 Which one should I choose?
----------------------------
+--------------------------
 
 * Choose the Apache License 2.0 if your project must link against
   yupiter statically, for example because shared objects or DLLs
