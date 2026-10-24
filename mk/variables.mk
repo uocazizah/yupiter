@@ -12,8 +12,8 @@ OBJDIR  := $(BUILD_DIR)/obj
 TESTDIR := $(BUILD_DIR)/test
 
 # Sources.
-IO_SOURCES  := io/file.cxx io/fprintf.cxx io/printf.cxx io/string.cxx \
-               io/syscall_linux.cxx io/vfprintf.cxx
+IO_SOURCES  := io/file.cxx io/fprintf.cxx io/input.cxx io/printf.cxx \
+               io/string.cxx io/syscall_linux.cxx io/vfprintf.cxx
 MEM_SOURCES := mem/heap.cxx
 LIB_SOURCES := $(IO_SOURCES) $(MEM_SOURCES)
 
@@ -104,7 +104,8 @@ TEST_HEADERS := include/yupiter.h include/yupiter.hpp \
 
 FREESTANDING_TESTS := test_index test_format test_differential test_errors \
                       test_stream test_largewrite test_shortwrite test_string \
-                      test_heap test_heap_abort
+                      test_heap test_heap_abort test_input test_input_edge \
+                      test_input_large
 HOSTED_TESTS := test_differential_reference test_index_cxx
 
 TEST_BINARIES := $(addprefix $(TESTDIR)/,$(FREESTANDING_TESTS) $(HOSTED_TESTS))
