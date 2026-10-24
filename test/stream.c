@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - stream staging, discard and ordering test
  * Copyright (C) 2026 Uoc Azizah
@@ -95,7 +97,8 @@ int main(void)
     written = yupiter_printf("boundary:%s\n", long_line);
     yupiter_printf("boundary:written=%d\n", written);
 
-    written = yupiter_fprintf(yupiter_stderr, "stderr-boundary:%s\n", long_line);
+    written = yupiter_fprintf(yupiter_stderr, "stderr-boundary:%s\n",
+                              long_line);
     yupiter_printf("stderr-boundary:written=%d\n", written);
 
     return 0;
