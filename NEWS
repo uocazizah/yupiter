@@ -9,6 +9,10 @@ the additions below are backward-compatible.
 
 Interface
 ~~~~~~~~~
+  * include/yupiter.h declares YUPITER_EOF and the input functions
+    yupiter_getchar, yupiter_fgetc, yupiter_fgets, yupiter_fread,
+    yupiter_ungetc, yupiter_feof, yupiter_ferror, yupiter_clearerr and
+    yupiter_fflush.
   * include/yupiter.h declares yupiter_memory_status with the values
     YUPITER_MEMORY_OK, YUPITER_MEMORY_INVALID_POINTER,
     YUPITER_MEMORY_OUT_OF_MEMORY and YUPITER_MEMORY_OVERFLOW, together
