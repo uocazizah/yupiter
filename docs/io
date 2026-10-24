@@ -28,8 +28,9 @@ implementation detail, but internally it is:
 Three streams exist: yupiter_stdout (fd 1), yupiter_stderr (fd 2) and
 yupiter_stdin (fd 0).  yupiter_stdout is buffered; yupiter_stderr is
 unbuffered so that it is never reordered with respect to stdout;
-yupiter_stdin is reserved for a future input release and is not used by
-any function declared in "<yupiter.h>".
+yupiter_stdin is the input stream (fd 0).  The input functions
+yupiter_getchar, yupiter_fgetc, yupiter_fgets, yupiter_fread and
+yupiter_ungetc read from it or from any other stream.
 
 The objects are constant pointers: they stay valid for the whole
 program lifetime, but a caller may not rebind stdout to another
@@ -116,12 +117,12 @@ the buffer.  A result of zero for a request that was not zero is a
 failure rather than a retry, since repeating it would never make
 progress.
 
-yupiter_sys_read and yupiter_sys_close belong to the platform layer of the
-input release that yupiter_stdin is waiting for; nothing in the library
-calls them yet.  They are kept next to the write wrapper so that the
-whole operating-system surface stays in one file, and they share the
-same classification, so a read of 4096 bytes or more is a success
-there too.
+yupiter_sys_read and yupiter_sys_close belong to the platform layer used
+by the input functions; yupiter_sys_read now reports the count it
+completed through its output parameter.  They are kept next to the
+write wrapper so that the whole operating-system surface stays in one
+file, and they share the same classification, so a read of 4096 bytes
+or more is a success there too.
 
 yupiter_sys_exit uses exit_group rather than exit so that every thread
 of the process is terminated.  yupiter creates no threads, but a
