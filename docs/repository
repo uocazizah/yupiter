@@ -1,5 +1,5 @@
 map of the yupiter repository
-==============================
+=============================
 
 yupiter is a small, freestanding standard C library for Linux on
 aarch64 and on x86_64.  It is built and linked without any host C
@@ -134,26 +134,30 @@ mem/ - dynamic memory
     heap.cxx          The allocator: a static arena, first-fit block
                       allocation with splitting and merging, resizing
                       in place or by moving, the safe variants that
-                      terminate the process on a detected fault, and
-                      the accounting the tests assert on.  The arena is
-                      an array of "std::byte" and the block state is a
-                      fixed-width scoped enumeration, so the on-arena
-                      layout is the same on every target.  Documented in
-                      docs/heap.
+                      terminate the process on a detected fault, the
+                      checked variants that report yupiter_memory_status
+                      instead, and the accounting the tests assert on.
+                      The arena is an array of "std::byte" and the block
+                      state is a fixed-width scoped enumeration, so the
+                      on-arena layout is the same on every target.
+                      Documented in docs/heap.
 
 
 include/ - the headers
------------------------
+----------------------
 
     yupiter.h         The C header: the version macros, the streams,
                       yupiter_printf, yupiter_fprintf and the dynamic
                       memory functions yupiter_malloc, yupiter_free,
                       yupiter_realloc, yupiter_malloc_safe,
-                      yupiter_free_safe and yupiter_realloc_safe.  The
-                      comments in this file are the contract of the
-                      library.  It depends only on "<stdarg.h>" and
-                      "<stddef.h>", so it works in a freestanding build.
-                      Documented in docs/formatting and docs/heap.
+                      yupiter_free_safe, yupiter_realloc_safe,
+                      yupiter_free_checked and yupiter_realloc_checked,
+                      with the yupiter_memory_status enumeration the
+                      checked functions return.  The comments in this
+                      file are the contract of the library.  It depends
+                      only on "<stdarg.h>" and "<stddef.h>", so it works
+                      in a freestanding build.  Documented in
+                      docs/formatting and docs/heap.
     yupiter.hpp       The C++ entry point: it includes yupiter.h
                       inside an "extern "C"" specification so the
                       symbols are not mangled.  No C++ runtime is
@@ -193,9 +197,8 @@ test/ - the test programs
 -------------------------
 
     run-tests.sh      The test runner: builds nothing, runs every test
-                      program and the three inspection scripts, prints
-                      PASS or FAIL per check and exits non-zero when one
-                      failed.
+                      program and the three shell checks, prints PASS or
+                      FAIL per check and exits non-zero when one failed.
     check-freestanding.sh
                       Inspects the built archive and shared object: every
                       undefined symbol has to be "main" or a yupiter
@@ -203,6 +206,11 @@ test/ - the test programs
                       interface, no member may hold a section that runs
                       code before the program, and the shared object may
                       name no NEEDED library.
+    check-artifact-paths.sh
+                      Passes option-like and @response artifact names to
+                      the inspection scripts, so a name that a tool would
+                      otherwise interpret as an option is still treated as
+                      a path.
     install-test.sh   Stages "make install DESTDIR=...", checks the
                       installed files, and builds consumer/ against the
                       staged prefix with pkg-config and, when available,
@@ -241,6 +249,11 @@ test/ - the test programs
                       accounting.
     heap_abort.c      The fail-fast paths: one scenario per run,
                       selected on the command line.
+    test_python_binding.py
+                      The Python binding, exercised against an installed
+                      wheel.  The python-binding workflow job runs it;
+                      "make check" does not, because the test needs
+                      Python, maturin and the built wheel.
     rawsyscall_aarch64.S, rawsyscall_x86_64.S
                       The real three-argument trampoline compiled into
                       shortwrite.c, so calls the mock does not script
@@ -283,12 +296,13 @@ mk/ - the Makefile modules
 .github/ - automation
 ---------------------
 
-    dependabot.yml    Keeps the GitHub Actions dependencies updated.
+    dependabot.yml    Keeps the GitHub Actions and Cargo dependencies
+                      updated.
     workflows/        The build and test matrix (aarch64 and x86_64,
                       GCC and Clang, Debug, RelWithDebInfo and Release,
-                      static, shared and both), the golden-file
-                      regeneration check and the configure guard.  See
-                      docs/building.
+                      static, shared and both), the Python binding job,
+                      the golden-file regeneration check and the
+                      configure guard.  See docs/building.
     workflows/security.yml
                       clang-tidy, flawfinder and the dependency review.
     workflows/codeql.yml
