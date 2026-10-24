@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
 # yupiter - package metadata
 #
 # The pkg-config file and the CMake package configuration are generated
