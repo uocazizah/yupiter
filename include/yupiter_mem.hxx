@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - a minimal standard C library
  * Copyright (C) 2026 Uoc Azizah
@@ -15,7 +17,8 @@
  * Alternatively, and at your option, this program may be used,
  * copied, modified and distributed under the terms of the Apache
  * License, Version 2.0, in which case the provisions of that
- * license apply instead of those above.
+ * license apply instead of those above.  You may obtain a copy of
+ * the License at <https://www.apache.org/licenses/LICENSE-2.0>.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
