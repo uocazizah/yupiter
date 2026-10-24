@@ -214,7 +214,8 @@ extern "C" int yupiter_sys_write(int fd, const void *p_buffer,
  * this interface until the input layer needs it, rather than being
  * exposed now for a caller that does not exist.
  */
-extern "C" int yupiter_sys_read(int fd, void *p_buffer, std::size_t length)
+extern "C" int yupiter_sys_read(int fd, void *p_buffer, std::size_t length,
+                               std::size_t *p_count)
 {
     long result;
 
@@ -228,7 +229,7 @@ extern "C" int yupiter_sys_read(int fd, void *p_buffer, std::size_t length)
         static_cast<long>(reinterpret_cast<std::uintptr_t>(p_buffer)),
         static_cast<long>(length));
 
-    return yupiter_kernel_result(result, nullptr);
+    return yupiter_kernel_result(result, p_count);
 }
 
 extern "C" int yupiter_sys_close(int fd)
