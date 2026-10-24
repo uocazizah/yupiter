@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - a minimal standard C library
  * Copyright (C) 2026 Uoc Azizah
@@ -94,9 +96,12 @@ constinit yupiter_FILE yupiter_stream_stderr{
 
 } /* namespace */
 
-extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stdin = &yupiter_stream_stdin;
-extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stdout = &yupiter_stream_stdout;
-extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stderr = &yupiter_stream_stderr;
+extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stdin =
+    &yupiter_stream_stdin;
+extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stdout =
+    &yupiter_stream_stdout;
+extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stderr =
+    &yupiter_stream_stderr;
 
 extern "C" int yupiter_stream_flush(yupiter_FILE *stream)
 {
