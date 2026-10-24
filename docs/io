@@ -2,7 +2,7 @@ streams, system calls and assembly
 ==================================
 
 This document covers io/file.cxx, io/syscall_linux.cxx,
-io/string.cxx and the two files in assembly/.  Together they are the
+io/string.cxx and the six files in assembly/.  Together they are the
 layer the rest of the library stands on: everything above them is
 portable C++23, everything here knows the operating system or the
 architecture.
@@ -196,9 +196,11 @@ Written in GNU assembler (GAS) syntax, as the project conventions
 require.
 
 
-The entry points (assembly/yupiter_start_aarch64.S and
-assembly/yupiter_start_x86_64.S)
--------------------------------------------------
+The entry points
+----------------
+
+The two entry points, assembly/yupiter_start_aarch64.S and
+assembly/yupiter_start_x86_64.S, are the first code that runs.
 
 The kernel enters _start with the initial stack layout:
 
