@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
 # Regression for argument/response-file injection in the artifact checker.
 set -eu
 srcdir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
