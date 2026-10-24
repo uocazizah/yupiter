@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - failure path test
  * Copyright (C) 2026 Uoc Azizah
@@ -97,16 +99,19 @@ int main(void)
           "precision literal overflows");
 
     /* A field that cannot fit in the return value is a failure too. */
-    check(yupiter_printf("%2147483647d", 1) == -1, "field exceeds return value");
+    check(yupiter_printf("%2147483647d", 1) == -1,
+          "field exceeds return value");
     check(yupiter_printf("%2147483647s", "x") == -1, "string field too wide");
 
     /* Null arguments. */
     check(yupiter_printf(NULL) == -1, "null format");
     check(yupiter_fprintf(NULL, "x") == -1, "null stream");
-    check(yupiter_fprintf(yupiter_stdout, NULL) == -1, "null format with stream");
+    check(yupiter_fprintf(yupiter_stdout, NULL) == -1,
+          "null format with stream");
 
     /* A write that the operating system rejects. */
-    check(yupiter_fprintf(&broken_stream, "x") == -1, "write to a bad descriptor");
+    check(yupiter_fprintf(&broken_stream, "x") == -1,
+          "write to a bad descriptor");
     check(broken_stream.error != 0, "failure is recorded in the stream");
     check(yupiter_fprintf(&broken_stream, "y") == -1,
           "a stream in error keeps failing");
@@ -114,7 +119,8 @@ int main(void)
           "flushing a stream in error fails");
 
     /* Nothing staged must flush cleanly, and the good streams work. */
-    check(yupiter_stream_flush(yupiter_stdout) == 0, "flush with nothing staged");
+    check(yupiter_stream_flush(yupiter_stdout) == 0,
+          "flush with nothing staged");
     check(printf_unchecked("") == 0, "empty format");
     check(fprintf_unchecked(yupiter_stderr, "") == 0,
           "empty format on stderr");
