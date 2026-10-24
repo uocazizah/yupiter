@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - a minimal standard C library
  * Copyright (C) 2026 Uoc Azizah
@@ -36,7 +38,8 @@
 namespace yupiter::io
 {
 
-extern "C" YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream, const char *format, ...)
+extern "C" YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream,
+                                               const char *format, ...)
 {
     va_list args;
     int     count;
