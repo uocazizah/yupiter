@@ -3,16 +3,21 @@ python binding for yupiter
 
 A PyO3 binding of the public C17 interface of yupiter to Python.
 The binding is not part of the library build; it lives in python/
-and is built with maturin.  It links against the installed shared
-object (libyupiter.so) and exposes output and allocation functions from
-include/yupiter.h.
+and is built with maturin.  It links against the shared object that
+"make" produces in build/ and exposes output and allocation functions
+from include/yupiter.h.
+
+The binding is distributed under the same three licenses as the
+library: GPL-2.0-or-later, LGPL-2.1-or-later or Apache-2.0, at your
+option.  See LICENSE and LICENSES/ in the repository root.
 
 Requirements
 ------------
 
   * Rust 1.83 or newer.
   * Python 3.12 or newer.
-  * A built yupiter library ("make" in the repository root).
+  * A C++23 compiler and the yupiter build requirements; python/build.rs
+    runs "make" in the repository root.
   * patchelf, for the wheel packaging step.
 
 Build
@@ -37,7 +42,8 @@ Structure
     python/build.rs           Builds yupiter and links libyupiter.so.
     python/src/lib.rs         The binding: FFI declarations and the
                               #[pymodule] definition.
-    python/yupiter_py/        Python package init.
+    python/yupiter_py/        Python package init that re-exports the
+                              extension module under a package name.
 
 Exposed symbols
 ---------------
@@ -77,12 +83,8 @@ and ValueError for invalid, freed or corrupt pointers.  Zero-size
 allocation returns 0; zero-size resize releases the block and returns 0.
 New allocations are zero-filled; growth preserves existing bytes and
 leaves additional bytes uninitialised.  Native C safe functions keep
-terminating with status 134 on failure.
-
-This repairs the documented promise of Python exceptions.  Earlier
-bindings terminated the interpreter on native failures and raised a
-PyO3 PanicException on multiplication overflow; callers should now catch
-the standard Python exceptions above.
+terminating with status 134 on failure, so a Python caller should use
+the wrappers above rather than the terminating interface.
 
 printf and fprintf accept a pre-formatted string.  The variadic C
 function cannot be bound directly by the PyO3 macro, so formatting
