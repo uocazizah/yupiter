@@ -227,6 +227,49 @@ check_largewrite
 check_status short_write_retry "$bindir/test_shortwrite"
 check_status string_checks "$bindir/test_string"
 
+# Input layer: feed a known stream on stdin.
+if "$bindir/test_input" < "$srcdir/test/input.txt" \
+   > "$workdir/input.out" 2> "$workdir/input.err"
+then
+    pass input_checks
+else
+    fail input_checks "the program exited non-zero" "$(cat "$workdir/input.err")"
+fi
+
+# Input edge cases.
+if "$bindir/test_input_edge" < "$srcdir/test/input_edge.txt" \
+   > "$workdir/input_edge.out" 2> "$workdir/input_edge.err"
+then
+    pass input_edge_checks
+else
+    fail input_edge_checks "the program exited non-zero" \
+         "$(cat "$workdir/input_edge.err")"
+fi
+
+# Large read covers the >=4096 count/error boundary of yupiter_sys_read.
+check_input_large()
+{
+    name=input_large_is_reported
+    size=8190
+    pattern=$workdir/$name.pattern
+    actual=$workdir/$name.out
+
+    awk 'BEGIN { for (i = 0; i < 819; i++) printf "0123456789" }' \
+        > "$pattern"
+
+    if ! "$bindir/test_input_large" < "$pattern" > "$actual" \
+       2> "$workdir/$name.err"
+    then
+        fail "$name" "the program exited non-zero" \
+             "$(cat "$workdir/$name.err")"
+        return
+    fi
+
+    pass "$name"
+}
+
+check_input_large
+
 # The allocator and its leak accounting.
 check_status heap_checks "$bindir/test_heap"
 
