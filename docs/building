@@ -1,5 +1,5 @@
 building yupiter
-=================
+================
 
 Requirements
 ------------
@@ -217,7 +217,7 @@ point from it.  A hosted program that links the archive does not pull
 that member in, because nothing refers to "_start" in such a program,
 and its own C runtime keeps providing the entry point.
 
-libyupiter.so.1.0.1 is the hosted shared object.  It excludes the
+libyupiter.so.1.0.2 is the hosted shared object.  It excludes the
 startup file, carries SONAME libyupiter.so.1 and the usual two links
 (name and soname), and names no shared library it needs: no C library
 and no C++ runtime.  It is loaded by a program that already has an
@@ -312,8 +312,8 @@ before main() has done anything - says nothing about the cause.  GNU ld
 places the read-write segment at a file offset congruent to its virtual
 address modulo the maximum page size of the target (64 KiB on aarch64,
 4 KiB on x86_64), and it pads the file out to that offset only when it
-has something to write there.  A static
-executable with nothing file-backed in its read-write segment - no
+has something to write there.  A static executable with nothing
+file-backed in its read-write segment - no
 global object with an initializer, nothing the linker has to write into
 the image - therefore has that segment placed past the end of the file,
 the kernel maps the page from there, and the first access to the .bss
