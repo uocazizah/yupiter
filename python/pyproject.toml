@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
@@ -7,14 +10,14 @@ name = "yupiter"
 version = "1.0.2"
 description = "Python bindings for yupiter - a minimal standard C library"
 requires-python = ">=3.12"
-license = {text = "GPL-3.0-or-later OR LGPL-2.1-or-later OR Apache-2.0"}
+license = {text = "GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0"}
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Rust",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
