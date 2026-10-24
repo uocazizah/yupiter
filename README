@@ -1,5 +1,5 @@
 yupiter
------------
+-------
 
 yupiter is a library for the C programming language.
 
@@ -16,9 +16,9 @@ or architecture is rejected when the project is configured, rather
 than silently mapped onto an implementation that does not match it.
 
 Project Status
------------------
+--------------
 
-yupiter is stable.  The current release is 1.0.1 (see NEWS); the
+yupiter is stable.  The current release is 1.0.2 (see NEWS); the
 shared object has SOVERSION 1.
 
 Within the 1.x series the exported symbols, their signatures, their C
@@ -28,7 +28,7 @@ headers and new optional build features may be added in a minor
 release without breaking existing consumers.
 
 Build
------------------
+-----
 
 The build is a GNU Makefile driven by a POSIX configure script; no
 CMake, Python or generator is required on the build host.
@@ -55,7 +55,7 @@ contains no entry point and is meant for a hosted program that already
 has one.  Neither needs a C library or a C++ runtime.
 
 Repository Structure
------------------------
+--------------------
 assembly/     Freestanding entry point and system-call trampolines
 io/           Streams, formatting and the Linux system-call layer (C++23)
 mem/          The allocator (C++23)
@@ -68,17 +68,17 @@ build/        Generated build tree (not in the repository)
 python/       Python binding (PyO3/maturin), not part of the library build
 
 Documentation
-----------------------
+-------------
 
 The docs/ directory documents the whole repository in plain text, in
 the style of this file.  Start with docs/README, which lists every
 document and the reading order for a first-time reader.
 
 License
-----------------------
+-------
 
-yupiter is multi licensed.  You may use, copy, modify and distribute
-it under your choice of either license:
+yupiter is multi-licensed.  You may use, copy, modify and distribute
+it under your choice of one of the following three licenses:
 
 * GNU General Public License, version 2 or any later version (GPLv2+)
 * GNU Lesser General Public License, version 2.1 or any later
@@ -99,7 +99,7 @@ See the file LICENSE and the LICENSES/ directory for the full
 texts and the documentation of the licensing scheme.
 
 Contributing
----------------
+------------
 
 Contributions, bug reports, and suggestions are welcome.
 
