@@ -1,5 +1,11 @@
-"""
-Python binding test for yupiter.
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
+"""Test the yupiter Python extension module.
+
+Build and install the wheel before running the test; the module is
+imported from the active Python installation, and ctypes is used only to
+inspect the native pointers it returns.
 
 Run with: python test/test_python_binding.py
 """
@@ -11,7 +17,7 @@ import yupiter
 
 
 def _run_python(code):
-    """Run binding calls in a child with captured output and a ten-second limit."""
+    """Run binding calls in a child with captured output and a limit."""
     return subprocess.run(
         [sys.executable, "-c", "import yupiter; " + code],
         capture_output=True,
@@ -221,14 +227,20 @@ def test_malloc_safe_zero_filled():
 
 def test_malloc_safe_overflow():
     """Multiplication overflow raises the standard Python OverflowError."""
-    message = _expect_error(OverflowError, lambda: yupiter.yupiter_malloc_safe(1 << 63, 2))
+    message = _expect_error(
+        OverflowError,
+        lambda: yupiter.yupiter_malloc_safe(1 << 63, 2),
+    )
     assert "overflow" in message
 
 
 def test_malloc_safe_alignment_overflow():
-    """Alignment overflow raises OverflowError even when the product fits size_t."""
+    """Alignment overflow raises OverflowError when the product fits."""
     size_max = ctypes.c_size_t(-1).value
-    _expect_error(OverflowError, lambda: yupiter.yupiter_malloc_safe(1, size_max))
+    _expect_error(
+        OverflowError,
+        lambda: yupiter.yupiter_malloc_safe(1, size_max),
+    )
 
 
 def test_malloc_safe_oom():
@@ -248,7 +260,7 @@ def test_free_safe_valid():
 
 
 def test_free_safe_invalid():
-    """A foreign pointer raises ValueError without damaging later allocations."""
+    """A foreign pointer raises ValueError without damaging later calls."""
     _expect_error(ValueError, lambda: yupiter.yupiter_free_safe(12345))
     test_malloc_safe()
 
@@ -278,22 +290,34 @@ def test_realloc_safe_overflow():
 
 
 def test_realloc_safe_alignment_overflow():
-    """Null and live resizes classify alignment overflow without losing data."""
+    """Null and live resizes report alignment overflow without data loss."""
     size_max = ctypes.c_size_t(-1).value
-    _expect_error(OverflowError, lambda: yupiter.yupiter_realloc_safe(0, 1, size_max))
+    _expect_error(
+        OverflowError,
+        lambda: yupiter.yupiter_realloc_safe(0, 1, size_max),
+    )
     ptr = yupiter.yupiter_malloc_safe(1, 8)
     ctypes.memmove(ptr, b"SURVIVED", 8)
     try:
-        _expect_error(OverflowError, lambda: yupiter.yupiter_realloc_safe(ptr, 1, size_max))
+        _expect_error(
+            OverflowError,
+            lambda: yupiter.yupiter_realloc_safe(ptr, 1, size_max),
+        )
         assert ctypes.string_at(ptr, 8) == b"SURVIVED"
     finally:
         yupiter.yupiter_free_safe(ptr)
 
 
 def test_realloc_safe_invalid():
-    """Foreign pointers raise ValueError even when the requested size is zero."""
-    _expect_error(ValueError, lambda: yupiter.yupiter_realloc_safe(12345, 1, 4))
-    _expect_error(ValueError, lambda: yupiter.yupiter_realloc_safe(12345, 0, 4))
+    """Foreign pointers raise ValueError even for a zero-sized request."""
+    _expect_error(
+        ValueError,
+        lambda: yupiter.yupiter_realloc_safe(12345, 1, 4),
+    )
+    _expect_error(
+        ValueError,
+        lambda: yupiter.yupiter_realloc_safe(12345, 0, 4),
+    )
     test_malloc_safe()
 
 
@@ -302,26 +326,35 @@ def test_realloc_safe_oom():
     ptr = yupiter.yupiter_malloc_safe(1, 8)
     ctypes.memmove(ptr, b"SURVIVED", 8)
     try:
-        _expect_error(MemoryError, lambda: yupiter.yupiter_realloc_safe(ptr, 1, 100000))
+        _expect_error(
+            MemoryError,
+            lambda: yupiter.yupiter_realloc_safe(ptr, 1, 100000),
+        )
         assert ctypes.string_at(ptr, 8) == b"SURVIVED"
     finally:
         yupiter.yupiter_free_safe(ptr)
 
 
 def test_safe_invalid_pointers():
-    """Checked operations reject interior and freed pointers without corruption."""
+    """Checked calls reject interior and freed pointers without corruption."""
     ptr = yupiter.yupiter_malloc(16)
     assert ptr is not None
     _expect_error(ValueError, lambda: yupiter.yupiter_free_safe(ptr + 1))
-    _expect_error(ValueError, lambda: yupiter.yupiter_realloc_safe(ptr + 1, 1, 8))
+    _expect_error(
+        ValueError,
+        lambda: yupiter.yupiter_realloc_safe(ptr + 1, 1, 8),
+    )
     yupiter.yupiter_free_safe(ptr)
     _expect_error(ValueError, lambda: yupiter.yupiter_free_safe(ptr))
-    _expect_error(ValueError, lambda: yupiter.yupiter_realloc_safe(ptr, 1, 8))
+    _expect_error(
+        ValueError,
+        lambda: yupiter.yupiter_realloc_safe(ptr, 1, 8),
+    )
     test_malloc_safe()
 
 
 def test_realloc_safe_zero_product():
-    """Either zero factor releases live blocks and returns 0 for null pointers."""
+    """Either zero factor releases live blocks and returns 0 for null."""
     for count, size in [(0, 4), (2, 0)]:
         assert yupiter.yupiter_realloc_safe(0, count, size) == 0
         ptr = yupiter.yupiter_malloc(8)
@@ -331,18 +364,25 @@ def test_realloc_safe_zero_product():
 
 
 def test_output_is_literal():
-    """Percent directives and UTF-8 text print literally with byte-based counts."""
+    """Percent directives and UTF-8 text print literally, counting bytes."""
     # Run in a child so a regression cannot crash or flood the test runner.
     text = "100% literal: %s %p %08x %n %% %*s %999999999d café\n"
-    for stream, output in [(None, "stdout"), ("STDOUT", "stdout"), ("STDERR", "stderr")]:
+    streams = [
+        (None, "stdout"),
+        ("STDOUT", "stdout"),
+        ("STDERR", "stderr"),
+    ]
+    for stream, output in streams:
         if stream is None:
             call = f"yupiter.yupiter_printf({text!r})"
         else:
             call = f"yupiter.yupiter_fprintf(yupiter.{stream}, {text!r})"
-        result = _run_python(f"assert {call} == {len(text.encode('utf-8'))}")
+        expected = len(text.encode("utf-8"))
+        result = _run_python(f"assert {call} == {expected}")
         assert result.returncode == 0, result.stderr
         assert getattr(result, output) == text
-        assert getattr(result, "stderr" if output == "stdout" else "stdout") == ""
+        other = "stderr" if output == "stdout" else "stdout"
+        assert getattr(result, other) == ""
 
 
 def test_output_embedded_null():
