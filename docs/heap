@@ -18,6 +18,9 @@ The public API
     void *yupiter_malloc_safe(size_t count, size_t size);
     void  yupiter_free_safe(void *p);
     void *yupiter_realloc_safe(void *p, size_t count, size_t size);
+    yupiter_memory_status yupiter_free_checked(void *p);
+    yupiter_memory_status yupiter_realloc_checked(void *p, size_t size,
+                                                  void **result);
 
 The authoritative contract is the comment above these declarations in
 "<yupiter.h>".  In short:
@@ -64,6 +67,21 @@ yupiter_realloc_safe
     block leaves the added bytes uninitialised.  A zero count or size
     releases the block and returns null, which is not an error.
 
+yupiter_free_checked
+    Reports instead of terminating: a null pointer succeeds, and a
+    pointer that is not the start of a live block returns
+    YUPITER_MEMORY_INVALID_POINTER.  The heap is not modified on
+    failure.
+
+yupiter_realloc_checked
+    Same resize and zero-size rules as yupiter_realloc, but it reports
+    through yupiter_memory_status and stores the new pointer through
+    "result", which must be writable storage outside the heap.  On
+    failure "result" is cleared and the original block stays live and
+    unchanged.  Alignment overflow is classified before any allocation,
+    so it is reported as YUPITER_MEMORY_OVERFLOW rather than
+    exhaustion.
+
 The heap is not thread-safe: yupiter creates no threads and provides
 no synchronisation.
 
@@ -109,10 +127,10 @@ header, followed by its payload:
 
 The header is rounded up to alignof(std::max_align_t) - 16 bytes on
 aarch64 and on x86_64 - and every payload size is a multiple of that
-alignment too, so a payload is suitably aligned for any object.  A size request
-is rounded up the same way before it is looked for.  The state field
-is a scoped enumeration with a fixed 32-bit underlying type, so the
-on-arena layout is the same on every target.
+alignment too, so a payload is suitably aligned for any object.  A size
+request is rounded up the same way before it is looked for.  The state
+field is a scoped enumeration with a fixed 32-bit underlying type, so
+the on-arena layout is the same on every target.
 
 
 Allocation
@@ -286,14 +304,11 @@ Design notes and limits
     into a failing check anyway.
 
 Non-terminating checked operations
----------------------------------
+----------------------------------
 
-yupiter_free_checked(p) and yupiter_realloc_checked(p, size, &result)
-return yupiter_memory_status: OK, INVALID_POINTER, OUT_OF_MEMORY, or
-OVERFLOW (with the YUPITER_MEMORY_ prefix).  They never invoke the fatal
-handler.  The resize follows the same content and zero-size rules as
-yupiter_realloc, clears result on failure, and leaves the original live
-block unchanged.  Result storage must be writable and outside the heap.
-A null free is successful; an invalid or corrupt pointer is rejected.
-These additive interfaces support hosted language bindings while the
-existing native safe functions retain their status-134 failure policy.
+yupiter_free_checked and yupiter_realloc_checked return
+yupiter_memory_status instead of invoking the fatal handler, for hosted
+callers such as language bindings.  The values are
+YUPITER_MEMORY_OK, YUPITER_MEMORY_INVALID_POINTER,
+YUPITER_MEMORY_OUT_OF_MEMORY and YUPITER_MEMORY_OVERFLOW.  The
+existing safe functions keep the status-134 policy described above.
