@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
 # To get started with Dependabot version updates, you'll need to specify which
 # package ecosystems to update and where the package manifests are located.
 # Please see the documentation for all configuration options:
@@ -6,13 +9,13 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions" # See documentation for possible values
-    directories: 
+    directories:
       - "**/*" # Location of package manifests
     schedule:
       interval: "daily"
 
   - package-ecosystem: "cargo"
-    directories: 
+    directories:
       - "**/*"
     schedule:
        interval: "daily"
