@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - a minimal standard C library
  * Copyright (C) 2026 Uoc Azizah
@@ -15,7 +17,8 @@
  * Alternatively, and at your option, this program may be used,
  * copied, modified and distributed under the terms of the Apache
  * License, Version 2.0, in which case the provisions of that
- * license apply instead of those above.
+ * license apply instead of those above.  You may obtain a copy of
+ * the License at <https://www.apache.org/licenses/LICENSE-2.0>.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -159,9 +162,10 @@ static_assert((yupiter_heap_header % yupiter_heap_alignment) == 0,
               "the heap header must keep payloads aligned");
 static_assert(yupiter_heap_header >= sizeof(yupiter_heap_block),
               "the rounded heap header cannot be smaller than its fields");
-static_assert(yupiter_heap_size >= (yupiter_heap_header + yupiter_heap_alignment),
-              "YUPITER_HEAP_SIZE must hold one block header and one aligned "
-              "payload unit");
+static_assert(
+    yupiter_heap_size >= (yupiter_heap_header + yupiter_heap_alignment),
+    "YUPITER_HEAP_SIZE must hold one block header and one aligned "
+    "payload unit");
 
 /*
  * Exit status of the fail-fast paths of the safe functions.  134 is
@@ -216,7 +220,8 @@ constexpr std::size_t yupiter_heap_no_previous =
  * that is rejected while the library is compiled instead of failing
  * silently at run time.
  */
-alignas(std::max_align_t) constinit std::byte yupiter_heap_arena[yupiter_heap_size];
+alignas(std::max_align_t) constinit std::byte
+    yupiter_heap_arena[yupiter_heap_size];
 
 bool        yupiter_heap_ready;
 std::size_t yupiter_heap_used_bytes;
@@ -416,7 +421,8 @@ release_result yupiter_heap_locate(void *p, std::size_t *p_block_offset,
         return release_result::corrupt;
     }
 
-    if (block.payload > (yupiter_heap_size - block_offset - yupiter_heap_header))
+    if (block.payload >
+        (yupiter_heap_size - block_offset - yupiter_heap_header))
     {
         return release_result::corrupt;
     }
@@ -513,7 +519,8 @@ release_result yupiter_heap_release(void *p)
         return release_result::corrupt;
     }
 
-    if (block.payload > (yupiter_heap_size - block_offset - yupiter_heap_header))
+    if (block.payload >
+        (yupiter_heap_size - block_offset - yupiter_heap_header))
     {
         return release_result::corrupt;
     }
@@ -743,7 +750,8 @@ resize_status yupiter_heap_resize(void *p, std::size_t size, void **pp_result)
 
         if (spare < (yupiter_heap_header + yupiter_heap_alignment))
         {
-            *pp_result = &yupiter_heap_arena[block_offset + yupiter_heap_header];
+            *pp_result =
+                &yupiter_heap_arena[block_offset + yupiter_heap_header];
             return resize_status::accept;
         }
 
@@ -1051,7 +1059,8 @@ extern "C" YUPITER_PUBLIC void yupiter_free(void *p)
     static_cast<void>(yupiter_heap_release(p));
 }
 
-extern "C" YUPITER_PUBLIC void *yupiter_malloc_safe(std::size_t count, std::size_t size)
+extern "C" YUPITER_PUBLIC void *yupiter_malloc_safe(std::size_t count,
+                                                     std::size_t size)
 {
     void       *p;
     std::size_t total;
