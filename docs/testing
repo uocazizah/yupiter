@@ -18,7 +18,7 @@ exits non-zero when any check failed:
     ...
     PASS install_and_consume
 
-    20 checks, 0 failed
+    21 checks, 0 failed
 
 A single program can be built and run by hand:
 
@@ -81,6 +81,13 @@ pkg-config and, when CMake is installed, with find_package(yupiter).
 It is the only check that writes outside the test working directory,
 and it rebuilds nothing: it installs the library the current build has
 already produced.
+
+The Python binding has a separate test program,
+test/test_python_binding.py, which is not part of "make check": it
+imports the installed extension module and therefore requires a built
+wheel, Python 3.12 or newer and the module on the interpreter's search
+path.  The python-binding job in .github/workflows/build-test.yml
+builds the wheel with maturin and runs the test on both architectures.
 
 
 The kinds of test
