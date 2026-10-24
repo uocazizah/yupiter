@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - heap and leak test
  * Copyright (C) 2026 Uoc Azizah
@@ -15,7 +17,8 @@
  * Alternatively, and at your option, this program may be used,
  * copied, modified and distributed under the terms of the Apache
  * License, Version 2.0, in which case the provisions of that
- * license apply instead of those above.
+ * license apply instead of those above.  You may obtain a copy of
+ * the License at <https://www.apache.org/licenses/LICENSE-2.0>.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -287,7 +290,8 @@ static void test_exhaustion_and_release(void)
     check(yupiter_heap_live_blocks() == 0, "every block was released");
     check(yupiter_heap_live_bytes() == 0, "every byte was released");
 
-    p_large = yupiter_malloc(yupiter_heap_capacity() - (yupiter_heap_capacity() / 4u));
+    p_large = yupiter_malloc(yupiter_heap_capacity() -
+                             (yupiter_heap_capacity() / 4u));
     check(p_large != NULL, "free blocks are merged back into one");
     yupiter_free(p_large);
     check(yupiter_heap_live_bytes() == 0, "the merged block was released");
@@ -303,11 +307,15 @@ static void test_printf_releases_its_scratch(void)
 
     written = 0;
     written = written + yupiter_printf("[%d][%i][%u]\n", -42, 42, 42u);
-    written = written + yupiter_printf("[%x][%X][%o][%c]\n", 255u, 255u, 8u, 'Z');
-    written = written + yupiter_printf("[%10.4d][%-8u][%s]\n", 1234, 99u, "text");
+    written = written +
+              yupiter_printf("[%x][%X][%o][%c]\n", 255u, 255u, 8u, 'Z');
+    written = written +
+              yupiter_printf("[%10.4d][%-8u][%s]\n", 1234, 99u, "text");
     written = written + yupiter_printf("[%20s][%.3s][%%]\n", "wide", "abcdef");
-    written = written + yupiter_printf("[%20d][%-20d][%08d][%.4d]\n", 7, 7, 7, 7);
-    written = written + yupiter_printf("[%p][%s]\n", (void *)0, (const char *)NULL);
+    written = written +
+              yupiter_printf("[%20d][%-20d][%08d][%.4d]\n", 7, 7, 7, 7);
+    written = written +
+              yupiter_printf("[%p][%s]\n", (void *)0, (const char *)NULL);
 
     check(written > 0, "the formatted calls produced output");
     check(yupiter_heap_live_blocks() == 0,
