@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
 #
 # yupiter - configure the GNU Makefile build
 #
@@ -85,7 +88,10 @@ EOF
 
 fail()
 {
-    echo "configure: $*" >&2
+    for message in "$@"
+    do
+        echo "configure: ${message}" >&2
+    done
     exit 1
 }
 
@@ -155,8 +161,8 @@ for path in "${prefix}" "${bindir}" "${libdir}" "${includedir}"
 do
     case "${path}" in
         *[[:space:]]*|*'#'*|*'$'*)
-            fail "the path \"${path}\" contains a character that config.mk "
-            fail "cannot represent; use a path without spaces, # or $"
+            fail "the path \"${path}\" contains a character that config.mk" \
+                 "cannot represent; use a path without spaces, # or $"
             ;;
     esac
 done
@@ -165,9 +171,9 @@ for directory in "${bindir}" "${libdir}" "${includedir}"
 do
     case "${directory}" in
         /*)
-            fail "the installation directory \"${directory}\" must be "
-            fail "relative to the prefix; the CMake package derives it "
-            fail "from the installed location"
+            fail "the installation directory \"${directory}\" must be" \
+                 "relative to the prefix; the CMake package derives it " \
+                 "from the installed location"
             ;;
     esac
 done
@@ -176,8 +182,8 @@ case "${build_type}" in
     debug|release|relwithdebinfo|minsize)
         ;;
     *)
-        fail "unknown build type \"${build_type}\"; use debug, release, "
-        fail "relwithdebinfo or minsize"
+        fail "unknown build type \"${build_type}\"; use debug, release," \
+             "relwithdebinfo or minsize"
         ;;
 esac
 
@@ -199,8 +205,8 @@ fi
 
 if [ "${build_tests}" = yes ] && [ "${build_static}" = no ]
 then
-    fail "the test programs link the static archive; enable it with "
-    fail "--enable-static=yes or disable the tests"
+    fail "the test programs link the static archive; enable it with" \
+         "--enable-static=yes or disable the tests"
 fi
 
 case "${heap_size}" in
@@ -211,16 +217,16 @@ esac
 
 if [ "${heap_size}" -lt 64 ]
 then
-    fail "the heap size ${heap_size} is smaller than the smallest arena "
-    fail "yupiter can build with (64 bytes)"
+    fail "the heap size ${heap_size} is smaller than the smallest arena" \
+         "yupiter can build with (64 bytes)"
 fi
 
 operating_system=$(uname -s)
 
 if [ "${operating_system}" != Linux ]
 then
-    fail "unsupported operating system \"${operating_system}\"; only Linux "
-    fail "is implemented"
+    fail "unsupported operating system \"${operating_system}\"; only Linux" \
+         "is implemented"
 fi
 
 if [ -z "${target_arch}" ]
@@ -235,8 +241,8 @@ then
             target_arch=aarch64
             ;;
         *)
-            fail "unsupported target architecture \"${machine}\"; "
-            fail "implemented: aarch64 and x86_64"
+            fail "unsupported target architecture \"${machine}\";" \
+                 "implemented: aarch64 and x86_64"
             ;;
     esac
 fi
@@ -249,8 +255,8 @@ case "${target_arch}" in
         target_arch=aarch64
         ;;
     *)
-        fail "unsupported target architecture \"${target_arch}\"; "
-        fail "implemented: aarch64 and x86_64"
+        fail "unsupported target architecture \"${target_arch}\";" \
+             "implemented: aarch64 and x86_64"
         ;;
 esac
 
@@ -306,8 +312,8 @@ esac
 if [ "${compiler_arch}" != unknown ] &&
    [ "${compiler_arch}" != "${target_arch}" ]
 then
-    fail "the C compiler \"${cc}\" targets \"${compiler_machine}\", not "
-    fail "${target_arch}; pass a cross compiler with --cc and --cxx"
+    fail "the C compiler \"${cc}\" targets \"${compiler_machine}\", not" \
+         "${target_arch}; pass a cross compiler with --cc and --cxx"
 fi
 
 # The implementation is ISO C++23 and freestanding, so the toolchain
