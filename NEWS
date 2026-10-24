@@ -1,5 +1,81 @@
 yupiter news
-===============
+============
+
+Unreleased
+----------
+
+Changes since 1.0.2.  The C17 interface and the ABI remain compatible;
+the additions below are backward-compatible.
+
+Interface
+~~~~~~~~~
+  * include/yupiter.h declares yupiter_memory_status with the values
+    YUPITER_MEMORY_OK, YUPITER_MEMORY_INVALID_POINTER,
+    YUPITER_MEMORY_OUT_OF_MEMORY and YUPITER_MEMORY_OVERFLOW, together
+    with the non-terminating functions yupiter_free_checked and
+    yupiter_realloc_checked.  The two functions are exported from
+    libyupiter.so like the existing allocator interface.
+
+Library
+~~~~~~~
+  * yupiter_free_checked releases a live block and reports an invalid,
+    foreign, interior, freed or corrupt pointer as
+    YUPITER_MEMORY_INVALID_POINTER instead of invoking the fatal
+    handler.  A null pointer succeeds.
+  * yupiter_realloc_checked follows the resize and zero-size rules of
+    yupiter_realloc and stores its result through an explicit output
+    pointer, which must be writable and outside the heap.  On failure
+    the result is cleared and the original block stays live and
+    unchanged.  A null pointer allocates and a size of 0 releases, as
+    before.
+  * Alignment overflow in yupiter_realloc_checked is classified before
+    any allocation, for both a null pointer and a live block, and is
+    returned as YUPITER_MEMORY_OVERFLOW rather than exhaustion.  The
+    existing yupiter_malloc_safe, yupiter_free_safe and
+    yupiter_realloc_safe keep their documented status-134 failure
+    policy.
+
+Python bindings
+~~~~~~~~~~~~~~~
+  * A new PyO3-based binding in `python/` exposes the public interface
+    through the Python module `yupiter`.  It is built with `maturin`,
+    produces abi3 wheels for Python 3.12 and newer, and links against
+    libyupiter.so rather than the freestanding static archive.
+  * The module provides the formatted-output functions
+    (`yupiter_printf`, `yupiter_fprintf`), the basic allocator
+    (`yupiter_malloc`, `yupiter_free`, `yupiter_realloc`), the safe
+    variants (`yupiter_malloc_safe`, `yupiter_free_safe`,
+    `yupiter_realloc_safe`) and the stream constants (`STDOUT`,
+    `STDERR`, `STDIN`).
+  * The safe variants use the checked operations, so they do not
+    terminate the interpreter.  Overflow raises OverflowError, heap
+    exhaustion raises MemoryError, and an invalid, freed or corrupt
+    pointer raises ValueError.  A zero-size allocation returns 0 and a
+    zero-size resize releases the block.  New allocations are
+    zero-filled; growth preserves the existing bytes and leaves the
+    added bytes uninitialised.
+
+Build
+~~~~~
+  * The build-test workflow gains a python-binding job that builds the
+    wheel and runs its test suite on x86_64 and aarch64.
+  * Dependabot now checks GitHub Actions and Cargo daily, and the
+    binding uses PyO3 0.30.
+
+Testing
+~~~~~~~
+  * test/heap.c covers the checked operations, including null, foreign,
+    interior, freed and double-freed pointers, overflow, exhaustion,
+    and preservation of a live block across a failed resize.
+  * test/check-freestanding.sh gives every artifact an explicit
+    relative path and passes "--" to nm and readelf, because binutils
+    expands @response files even after "--".  The new
+    test/check-artifact-paths.sh checks names beginning with @ or --,
+    option-like names such as --plugin=untrusted, and names containing
+    spaces.
+  * The Python binding has a test suite in test/test_python_binding.py
+    and documentation in docs/python-binding.
+
 
 1.0.2
 -----
@@ -8,22 +84,6 @@ Released 23 October 2026.
 
 This patch keeps the C17 interface, the C++23 implementation and the
 ABI unchanged.
-
-Python bindings
-~~~~~~~~~~~~~~~
-  * A new PyO3-based Python binding (`python/`) exposes the public C17
-    interface through the Python module `yupiter`. The binding uses
-    `maturin` and produces `abi3` wheels (`abi3-py312`). It links
-    against `libyupiter.so` and exports every public symbol declared
-    in `include/yupiter.h`: the formatted-output functions
-    (`yupiter_printf`, `yupiter_fprintf`), the allocator
-    (`yupiter_malloc`, `yupiter_free`, `yupiter_realloc`), the safe
-    allocator variants (`yupiter_malloc_safe`, `yupiter_free_safe`,
-    `yupiter_realloc_safe`), and the stream constants
-    (`yupiter_stdout`/`STDOUT`, `yupiter_stderr`/`STDERR`,
-    `yupiter_stdin`/`STDIN`). The `*_safe` variants check for
-    overflow and raise Python exceptions instead of terminating with
-    status 134, so they remain safe to call from Python code.
 
 Build
 ~~~~~
@@ -496,7 +556,7 @@ Version
 
 
 1.0.0-beta
---------------
+----------
 
 Released 14 October 2026.
 
@@ -508,7 +568,7 @@ including the dynamic memory allocator and the documentation.
 
 
 Build and project structure
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   * New CMake build (CMake 3.16 or newer) producing a static archive,
     with strict warnings (-Wall -Wextra -Wpedantic -Werror) for every
