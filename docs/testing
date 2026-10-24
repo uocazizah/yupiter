@@ -304,9 +304,8 @@ What is not tested
     far more than the stream buffer to a file and to a pipe and checks
     the status, the length and every byte.
   * The count-versus-error boundary of yupiter_kernel_result is covered
-    only through yupiter_sys_write.  yupiter_sys_read has the same
-    classification and no caller yet; when the input layer arrives, its
-    own test has to cover a read of 4096 bytes or more.
+    by yupiter_sys_write and by the input large-read test, which reads
+    more than YUPITER_BUFFER_SIZE bytes in one call.
   * Sanitizers and valgrind are not run: a "-nostdlib" freestanding
     program has no runtime for them.  Leak detection uses the library's
     own accounting instead.  The hosted C++ test could be run under a
