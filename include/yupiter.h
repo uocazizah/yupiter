@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - a minimal standard C library
  * Copyright (C) 2026 Uoc Azizah
@@ -175,15 +177,16 @@ extern YUPITER_PUBLIC yupiter_FILE *const yupiter_stdin;
  * exhausted the call falls back to an internal stack buffer instead,
  * so running out of heap never makes the formatted functions fail.
  */
-YUPITER_PUBLIC int yupiter_printf(const char *format, ...) YUPITER_PRINTF_FORMAT(1, 2);
+YUPITER_PUBLIC int yupiter_printf(const char *format, ...)
+    YUPITER_PRINTF_FORMAT(1, 2);
 
 /*
  * Same as yupiter_printf, but writes to "stream" instead of
  * yupiter_stdout.  See yupiter_printf for the supported conversions and
  * for the meaning of the return value.
  */
-YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream, const char *format, ...)
-    YUPITER_PRINTF_FORMAT(2, 3);
+YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream, const char *format,
+                                   ...) YUPITER_PRINTF_FORMAT(2, 3);
 
 /*
  * Dynamic memory.
@@ -292,7 +295,17 @@ YUPITER_PUBLIC void *yupiter_realloc_safe(void *p, size_t count, size_t size);
 
 /*
  * Non-terminating checked operations for hosted callers such as language
- * bindings.  Existing safe functions retain their fatal failure policy.
+ * bindings.  They report a failure through the return value instead of
+ * terminating the process; the existing safe functions keep their fatal
+ * failure policy.
+ *
+ * The status values are:
+ *
+ *   YUPITER_MEMORY_OK               the operation succeeded
+ *   YUPITER_MEMORY_INVALID_POINTER  not the start of a live heap block
+ *   YUPITER_MEMORY_OUT_OF_MEMORY    no free block in the arena fits
+ *   YUPITER_MEMORY_OVERFLOW         the requested size cannot be
+ *                                   represented
  */
 typedef enum yupiter_memory_status
 {
@@ -302,17 +315,34 @@ typedef enum yupiter_memory_status
     YUPITER_MEMORY_OVERFLOW = 3
 } yupiter_memory_status;
 
-/* Null is accepted; invalid or corrupt blocks are rejected without writes. */
+/*
+ * Release the block that "p" points at and report the outcome.
+ *
+ * A null pointer succeeds and releases nothing.  The validation is the
+ * same as yupiter_free_safe, but a pointer that is not the start of a
+ * live block is reported as YUPITER_MEMORY_INVALID_POINTER and the heap
+ * is left unchanged; the process is never terminated.
+ *
+ * Returns YUPITER_MEMORY_OK or YUPITER_MEMORY_INVALID_POINTER.
+ */
 YUPITER_PUBLIC yupiter_memory_status yupiter_free_checked(void *p);
 
 /*
- * Same resize and zero-size rules as yupiter_realloc, with an explicit
- * result status.  "result" must point to writable pointer storage that
- * does not overlap the heap.  On failure *result is null and the original
- * block remains live and unchanged.  No failure terminates the process.
+ * Resize the block that "p" points at to "size" bytes and report the
+ * outcome.
+ *
+ * The resize and zero-size rules are those of yupiter_realloc: a null
+ * pointer allocates, and a size of 0 releases the block.  The new
+ * pointer is stored through "result", which must point to writable
+ * pointer storage that does not overlap the heap.  On failure *result
+ * is set to null and the original block remains live and unchanged.
+ *
+ * Returns YUPITER_MEMORY_OK, YUPITER_MEMORY_INVALID_POINTER,
+ * YUPITER_MEMORY_OUT_OF_MEMORY or YUPITER_MEMORY_OVERFLOW.  No failure
+ * terminates the process.
  */
-YUPITER_PUBLIC yupiter_memory_status yupiter_realloc_checked(void *p, size_t size,
-                                                          void **result);
+YUPITER_PUBLIC yupiter_memory_status
+yupiter_realloc_checked(void *p, size_t size, void **result);
 
 /*
  * The format-checking macro is an internal detail of the two
