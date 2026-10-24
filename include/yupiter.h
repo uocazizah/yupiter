@@ -99,6 +99,14 @@
 #define YUPITER_PRINTF_FORMAT(_format_position, _first_argument)
 #endif
 
+/*
+ * End-of-file and error indicator returned by the input functions.
+ *
+ * yupiter_getchar and yupiter_fgetc return this value on end of file or
+ * on a read error; yupiter_feof and yupiter_ferror distinguish the two.
+ */
+#define YUPITER_EOF (-1)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -120,8 +128,8 @@ typedef struct yupiter_FILE yupiter_FILE;
  *
  * yupiter_stdout is buffered; the buffer is flushed when a newline is
  * written and at the end of every completed call.  yupiter_stderr is
- * unbuffered.  yupiter_stdin is reserved for a future input release and
- * is not used by the functions declared here.
+ * unbuffered.  yupiter_stdin is the input stream used by the input
+ * functions declared below.
  *
  * The objects are constant pointers: the stream they point to stays
  * valid for the whole program lifetime, but the stream itself is not
@@ -187,6 +195,44 @@ YUPITER_PUBLIC int yupiter_printf(const char *format, ...)
  */
 YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream, const char *format,
                                    ...) YUPITER_PRINTF_FORMAT(2, 3);
+
+/*
+ * Input.
+ *
+ * yupiter_getchar reads one character from yupiter_stdin.  yupiter_fgetc
+ * reads one character from "stream".  Both return the byte read as an
+ * unsigned char converted to int, or YUPITER_EOF on end of file or on a
+ * read error; use yupiter_feof and yupiter_ferror to tell the two apart.
+ *
+ * yupiter_fgets reads at most "n - 1" characters from "stream" into "s",
+ * stopping after a newline, and writes a terminating null byte.  It
+ * returns "s" on success and null on end of file or error with no
+ * characters read.
+ *
+ * yupiter_fread reads up to "nmemb" elements of "size" bytes from
+ * "stream" into "ptr" and returns the number of full elements read.
+ * A "size" or "nmemb" of 0 reads nothing and returns 0.
+ *
+ * yupiter_ungetc pushes "c" back onto "stream" so that the next read
+ * returns it.  Only one byte of pushback is guaranteed; pushing a second
+ * byte before the first is consumed fails.  Returns "c" on success and
+ * YUPITER_EOF on failure.
+ *
+ * yupiter_feof reports whether a previous read reached end of file.
+ * yupiter_ferror reports whether a previous read failed.  yupiter_clearerr
+ * clears both flags.  yupiter_fflush pushes the staged bytes of a
+ * buffered output stream to the operating system.
+ */
+YUPITER_PUBLIC int yupiter_getchar(void);
+YUPITER_PUBLIC int yupiter_fgetc(yupiter_FILE *stream);
+YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stream);
+YUPITER_PUBLIC size_t yupiter_fread(void *ptr, size_t size, size_t nmemb,
+                                    yupiter_FILE *stream);
+YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_FILE *stream);
+YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream);
+YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream);
+YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream);
+YUPITER_PUBLIC int yupiter_fflush(yupiter_FILE *stream);
 
 /*
  * Dynamic memory.
