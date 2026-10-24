@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0 */
+
 /*
  * yupiter - a minimal standard C library
  * Copyright (C) 2026 Uoc Azizah
@@ -155,7 +157,8 @@ long yupiter_syscall3(long number, long arg1, long arg2, long arg3);
  * the direct path have reached the operating system and are not
  * affected.
  */
-int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer, size_t length);
+int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
+                         size_t length);
 int yupiter_stream_flush(yupiter_FILE *stream);
 void yupiter_stream_discard(yupiter_FILE *stream);
 
