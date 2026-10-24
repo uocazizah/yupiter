@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
 #
 # yupiter - run the test suite
 #
@@ -188,7 +191,8 @@ check_largewrite()
 
         if [ "$actual_size" -ne "$size" ]
         then
-            fail "$name" "$destination holds $actual_size bytes instead of $size"
+            fail "$name" \
+                 "$destination holds $actual_size bytes instead of $size"
             return
         fi
 
@@ -250,7 +254,8 @@ else
     fail archive_is_freestanding "no static archive at $archive"
 fi
 
-check_status artifact_paths sh "$srcdir/test/check-artifact-paths.sh" "$archive" "$shared"
+check_status artifact_paths sh "$srcdir/test/check-artifact-paths.sh" \
+    "$archive" "$shared"
 
 # Install into a staging tree and build a consumer against it.
 if sh "$srcdir/test/install-test.sh" "$builddir"
