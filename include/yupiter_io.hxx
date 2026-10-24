@@ -86,8 +86,14 @@ struct yupiter_FILE
     int    fd;
     int    error;
     int    unbuffered;
+    int    eof;
+    int    pushback;
+    int    has_pushback;
     size_t length;
     char   buffer[YUPITER_BUFFER_SIZE];
+    size_t input_size;
+    size_t input_pos;
+    char   input_buffer[YUPITER_BUFFER_SIZE];
 };
 
 /*
@@ -109,7 +115,7 @@ struct yupiter_FILE
  * that the whole operating-system surface stays in one file.
  */
 int yupiter_sys_write(int fd, const void *p_buffer, size_t length);
-int yupiter_sys_read(int fd, void *p_buffer, size_t length);
+int yupiter_sys_read(int fd, void *p_buffer, size_t length, size_t *p_count);
 int yupiter_sys_close(int fd);
 
 /* Terminates the process; never returns.  "status" is the exit code. */
@@ -161,6 +167,28 @@ int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
                          size_t length);
 int yupiter_stream_flush(yupiter_FILE *stream);
 void yupiter_stream_discard(yupiter_FILE *stream);
+
+/*
+ * Input helpers (io/input.cxx).
+ *
+ * yupiter_stream_read reads up to "length" bytes into "p_buffer" and
+ * stores the number actually read through "p_count".  It refills the
+ * stream's input buffer from the operating system when it is empty and
+ * reports EOF and errors through the stream.  Returns 0 on success
+ * (including a short read and EOF) and -1 on a system error.
+ *
+ * yupiter_stream_getc returns the next input byte as an unsigned char,
+ * or YUPITER_EOF on EOF or error; on error the stream's error flag is
+ * set, and on EOF its eof flag is set.
+ *
+ * yupiter_stream_ungetc pushes one byte back into the stream.  Returns
+ * the byte on success and YUPITER_EOF when a byte is already pushed
+ * back or "c" is YUPITER_EOF.
+ */
+int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer, size_t length,
+                        size_t *p_count);
+int yupiter_stream_getc(yupiter_FILE *stream);
+int yupiter_stream_ungetc(yupiter_FILE *stream, int c);
 
 /*
  * Formatting engine (io/vfprintf.cxx).
