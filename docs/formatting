@@ -1,189 +1,40 @@
 the formatting engine
 =====================
 
-yupiter_printf and yupiter_fprintf are thin wrappers: they start a
-va_list, call yupiter_vfprintf, and then either discard what the call
-had staged (on failure, so that half of a conversion does not reach
-the output) or flush it (on success, because the freestanding startup
-path installs no exit handler and a buffer left dirty would never be
-written).  A write that went through the direct path in
-yupiter_stream_write has already reached the kernel and cannot be
-discarded; that path is only taken for an unbuffered stream or for a
-payload larger than the staging buffer, which could not be held back
-whole in any case.  Everything else happens in io/vfprintf.cxx.
+yupiter_printf and yupiter_fprintf are thin wrappers around
+yupiter_vfprintf.  On failure the staged output is discarded; on
+success it is flushed.  Direct writes to the kernel cannot be
+discarded and are only used for unbuffered streams or payloads larger
+than the staging buffer.  Everything else is in io/vfprintf.cxx.
 
-The wrappers and the engine are C++23, but every function the headers
-declare is defined with C linkage, so the archive exports the same
-unmangled names it always did; the internal helpers of the engine live
-in an anonymous namespace.
+The engine is C++23 with C linkage; internal helpers are in an
+anonymous namespace.
 
 
-How one call flows
-------------------
+Flow
+----
 
-    yupiter_printf / yupiter_fprintf
-        |
-        v
-    yupiter_vfprintf(stream, format, args)
-        |
-        +-- borrow the scratch block from the heap (see below)
-        |
-        +-- parser: flags -> width -> precision -> length -> conversion
-        |         a run of ordinary characters is emitted as it is
-        |
-        +-- output_write / output_repeat / output_field / output_number
-        |         |
-        |         v
-        +-- yupiter_stream_write (io/file.cxx)
-                  |
-                  +-- small buffered write -> staging buffer -> write(2)
-                  +-- large or unbuffered write ----------------> write(2)
-
-Parser and formatter are kept in one translation unit on purpose: the
-specification has to be fully known before any byte is emitted, and
-splitting parsing from emission would force the whole specification to
-be marshalled through a second interface.
-
-The parser and the formatter are stateless with respect to each
-conversion; the only state a call carries is the stream, the running
-character count and a sticky failure flag.  The first failure stops
-the whole call without further system calls.
+One call: parse the format string, format each conversion, stage bytes,
+flush on success.  Parser and formatter share one translation unit so
+the full specification is known before any byte is emitted.  State per
+call: stream, character count, sticky failure flag.  First failure
+stops the call.
 
 
-The dialect
------------
-
-Conversions:
-
-    %d %i          signed decimal int
-    %u             unsigned decimal int
-    %o             unsigned octal int
-    %x %X          unsigned hexadecimal int (lower/upper case)
-    %c             int converted to unsigned char
-    %s             null-terminated string
-    %p             pointer (a null pointer prints as "(nil)")
-    %%             a literal percent sign
-
-Fields:
-
-    flags          '-' left align, '+' force sign, ' ' space sign,
-                   '#' alternative form, '0' zero pad - in any order
-                   and any number of repetitions
-    width          '*' from an argument, or decimal digits
-    precision      '.' followed by '*' or digits; a bare '.' means 0
-    length         hh, h, l, ll, z, t, j
-
-Details that are easy to get wrong and are covered by the tests:
-
-  * A negative '*' width is the '-' flag with a positive width;
-    INT_MIN saturates rather than overflowing on negation.
-  * A negative '*' precision is treated as if no precision were given.
-  * A null "%s" argument prints as "(null)", or as nothing at all when
-    the precision is narrower than that word.
-  * The layout follows the standard: optional sign, optional prefix
-    ("0x", or a leading "0" for octal), the zeros demanded by the
-    precision, the digits, then the field padding.  Zero padding from
-    the '0' flag is merged with the precision zeros and placed after
-    the sign, which is what makes "%-8.4d" and "%08.4d" differ only in
-    alignment.
-  * The '+' and ' ' flags apply to the signed conversions and to %p.
-    On a non-null pointer they are printed before the "0x" prefix -
-    "%+p" of 0x1234 prints "+0x1234" - which is what the reference C
-    library does; a null pointer prints "(nil)" with no sign.
-  * Flags that do not apply to a conversion are ignored: "%+u" and
-    "% u" print the value unchanged, and "%#u" prints no prefix.
-
-Not supported in this release: floating-point conversions, positional
-arguments ("%1$s"), the "%n" conversion and the "I" / "'" flags.  An
-unrecognised conversion consumes its argument and emits nothing, which
-is undefined behaviour by the standard; emitting nothing is the least
-surprising choice here.
-
-
-Checking the format string
---------------------------
-
-yupiter_printf and yupiter_fprintf are declared with the GNU
-"format(printf)" attribute when the compiler understands it, so a call
-whose arguments do not match its format string is reported while the
-program is built rather than when it runs.  The attribute is the only
-compiler extension in the public header: it changes no declaration and
-no calling convention, both GNU C and Clang provide it, and it expands
-to nothing anywhere else, so the header is still ISO C17.
-
-The check is the compiler's and it is a little stricter than this
-interface in one place.  "%+p" and "% p" are accepted here, following
-the reference C library, but "-Wformat" reports the '+' and ' ' flags on
-a pointer conversion, because the C standard leaves them undefined
-there.  A caller that wants that output, knowing what it prints, can
-quiet the one diagnostic around the one call:
-
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wformat"
-    yupiter_printf("%+p\n", pointer);
-    #pragma GCC diagnostic pop
-
-test/format.c does exactly that around the cases that pin the sign flags
-on a pointer down.
-
-
-Refusing to produce output
---------------------------
-
-The return value is the number of characters written, or -1.  Three
-things make a call fail:
-
-  * A width or precision written as a literal that does not fit in an
-    "int" - "%9999999999d" is a failure, not a very wide field.  The
-    accumulator is clamped internally so a long run of digits cannot
-    wrap it.
-  * A field that would not fit in the return value.  The check happens
-    before a single byte of the field is written: a width of INT_MAX
-    would otherwise push gigabytes at the kernel and only then fail.
-  * A write the operating system rejects, which also becomes a sticky
-    error on the stream: every later call fails immediately without
-    touching the system-call layer.
-
-Digits are rendered backwards into a scratch buffer from the end, so
-the storage is never read past the digits into whatever the previous
-call left there.  Division and modulus by 8, 10 and 16 are compiled to
-ordinary arithmetic on both architectures this library implements, so
-no compiler runtime helper is required - which matters because the
-library links with -nostdlib.
-
-
-Scratch memory
---------------
-
-Every call borrows one block of 97 bytes from the yupiter heap: the
-first 65 bytes are the digit storage of output_number, the remaining
-32 bytes are the padding chunk of output_repeat.  The two regions
-never overlap, and the block is released on every path out of
-yupiter_vfprintf, including the two failure paths of the parser, so a
-completed call leaves nothing allocated.
-
-When the heap has no block to spare, the helpers fall back to stack
-buffers of the same size: an exhausted heap costs stack space rather
-than a failed conversion.  The formatted functions therefore never
-fail because of the heap.  See docs/heap.
-
-
-Testing
+Dialect
 -------
 
-test/format.c prints the output of every supported conversion, flag,
-field and length modifier together with the value each call reports.
-Its golden file was produced by a reference C library, so the test
-checks the dialect rather than the implementation's habits.  See
-docs/testing for how to regenerate it.
+Conversions: %d %i %u %o %x %X %c %s %p %%.  Flags: - + space 0 #.
+Width and precision via number or *.  Length modifiers: hh h l ll z t j.
+Field width and precision are bounded; out-of-range values are clamped.
 
-test/differential.c covers the same dialect more widely and against a
-live reference: the same source is compiled once against the host C
-library and once against yupiter, and the two are compared case by
-case.  Its cases are built at run time from every combination of flags,
-width and precision, so it reaches combinations nobody would write by
-hand - a precision on %c, the '#' flag on %d - which is where two
-implementations are most likely to disagree.
+Not supported: floating point, positional arguments, %n, I/' flags.
+Unrecognised conversions consume their argument and emit nothing.
 
-test/errors.c covers the failure paths of this document, and
-test/heap.c covers the scratch memory accounting.
+
+Format checking
+---------------
+
+yupiter_printf and yupiter_fprintf carry a format attribute, so
+mismatched arguments are caught at compile time.  Cases that need
+undefined or rejected behaviour are called through a function pointer.
