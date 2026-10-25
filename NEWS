@@ -22,6 +22,8 @@ Interface
 
 Library
 ~~~~~~~
+  * libyupiter.so now exports the input functions consistently on GCC
+    and Clang; their definitions in io/input.cxx carry YUPITER_PUBLIC.
   * yupiter_free_checked releases a live block and reports an invalid,
     foreign, interior, freed or corrupt pointer as
     YUPITER_MEMORY_INVALID_POINTER instead of invoking the fatal
@@ -58,9 +60,15 @@ Python bindings
     zero-size resize releases the block.  New allocations are
     zero-filled; growth preserves the existing bytes and leaves the
     added bytes uninitialised.
+  * The module now also exposes the input functions yupiter_getchar,
+    yupiter_fgetc, yupiter_fgets, yupiter_fread, yupiter_ungetc,
+    yupiter_feof, yupiter_ferror, yupiter_clearerr and yupiter_fflush.
+    yupiter_fread returns the bytes read.
 
 Build
 ~~~~~
+  * test/check-freestanding.sh now allows the public stream input
+    functions in the shared object's export list.
   * The build-test workflow gains a python-binding job that builds the
     wheel and runs its test suite on x86_64 and aarch64.
   * Dependabot now checks GitHub Actions and Cargo daily, and the
@@ -79,6 +87,11 @@ Testing
     spaces.
   * The Python binding has a test suite in test/test_python_binding.py
     and documentation in docs/python-binding.
+
+Documentation
+~~~~~~~~~~~~
+  * README and docs/ rewritten in a terse style; added docs/style.
+  * Added SECURITY.md, CONTRIBUTING.md and CODE_OF_CONDUCT.md.
 
 
 1.0.2
