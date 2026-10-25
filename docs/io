@@ -1,256 +1,37 @@
 streams, system calls and assembly
-==================================
+=================================
 
-This document covers io/file.cxx, io/syscall_linux.cxx,
-io/string.cxx and the six files in assembly/.  Together they are the
-layer the rest of the library stands on: everything above them is
-portable C++23, everything here knows the operating system or the
-architecture.
-
-The sources are C++23, but every function the headers declare is
-defined with C linkage, so the archive exports the C interface and
-nothing else; the internal helpers live in an anonymous namespace and
-are invisible to a linker.
+Covers io/file.cxx, io/syscall_linux.cxx, io/string.cxx and assembly/.
+Everything here knows the OS or the architecture; the rest is portable
+C++23.  All public functions use C linkage; internal helpers are in
+an anonymous namespace.
 
 
-The streams
------------
+Streams
+-------
 
-A stream is an opaque object of type yupiter_FILE.  Its layout is an
-implementation detail, but internally it is:
+A stream is an opaque yupiter_FILE.  Internally: descriptor, staging
+buffer, counts, eof and error flags.  Three streams exist:
+yupiter_stdout (fd 1, buffered), yupiter_stderr (fd 2, unbuffered),
+yupiter_stdin (fd 0).  Input functions read from any stream.
 
-    int     fd            operating-system file descriptor
-    int     error         sticky failure flag
-    int     unbuffered    push every write straight to the kernel
-    size_t  length        bytes currently staged
-    char    buffer[256]   the staging buffer (YUPITER_BUFFER_SIZE)
-
-Three streams exist: yupiter_stdout (fd 1), yupiter_stderr (fd 2) and
-yupiter_stdin (fd 0).  yupiter_stdout is buffered; yupiter_stderr is
-unbuffered so that it is never reordered with respect to stdout;
-yupiter_stdin is the input stream (fd 0).  The input functions
-yupiter_getchar, yupiter_fgetc, yupiter_fgets, yupiter_fread and
-yupiter_ungetc read from it or from any other stream.
-
-The objects are constant pointers: they stay valid for the whole
-program lifetime, but a caller may not rebind stdout to another
-object.  A stream bound to a descriptor that does not exist cannot be
-obtained through the public interface - test/errors.c builds one on
-purpose to exercise what happens next.
+Stream objects are constant pointers valid for the whole program.
 
 
 Staging
 -------
 
-The staging buffer lives inside the stream object, so staging output
-performs no allocation.  For a payload that does go through the
-buffer, yupiter_stream_write hands the staged bytes to the operating
-system in a single write when any of three events happens:
-
-  * the buffer is full,
-  * a newline is staged (this is what keeps line-oriented output
-    ordered without an exit-time hook, which the freestanding startup
-    path does not provide),
-  * the write is to an unbuffered stream and the caller has finished.
-
-A payload larger than the buffer is not copied through the staging
-buffer first.  When nothing is staged, yupiter_stream_write hands an
-unbuffered write, or a buffered payload larger than the buffer, to
-yupiter_sys_write in one call.  The wrapper already repeats a short write
-until the whole payload has been accepted, so the direct path neither
-loses bytes nor needs a stack copy of the payload.  On a buffered
-stream, a payload of exactly YUPITER_BUFFER_SIZE bytes still fills the
-staging buffer, which keeps the documented "a full buffer stays staged"
-behaviour.
-
-The newline scan only looks at the bytes that were just staged, and it
-stops at the first newline; it never reads beyond the caller's length.
-The direct path needs no scan at all because it has no staged data to
-order against the bytes being written.
-
-yupiter_stream_flush pushes the staged bytes and clears the buffer; it
-succeeds when nothing is staged.  yupiter_stream_discard throws the
-staged bytes away without writing them, which is what a failed
-formatted call does so that half of a conversion never reaches the
-output.
-
-Failure is sticky: once stream->error is set, every further write
-fails without touching the system-call layer.
+The staging buffer lives in the stream object, so no allocation.
+yupiter_stream_write hands staged bytes to the kernel in one write on
+flush, full buffer, or a direct large payload.  A payload larger than
+the buffer is written directly, with short writes repeated by the
+wrapper.  A full buffer stays staged.
 
 
-The operating-system layer
---------------------------
+System calls
+------------
 
-io/syscall_linux.cxx is the only place where Linux system-call numbers
-and the "-errno in the return register" convention appear.  The
-numbers are written as plain constants - no "<asm/unistd.h>" or other
-kernel header is consulted, so the build has no dependency outside
-this repository - and the architecture picks them from the compiler's
-own target, so one without an entry is a compilation error rather than
-a silent mixture of two targets:
-
-    aarch64    x86_64    call
-    57         3         close
-    63         0         read
-    64         1         write
-    94         231       exit_group
-
-The wrappers are yupiter_sys_write, yupiter_sys_read, yupiter_sys_close and
-yupiter_sys_exit.  The first three return 0 on success and -1 on
-failure, mirroring the convention documented for the public functions.
-A raw kernel result is classified by comparing it, as an unsigned
-integer, against -4095: the kernel reports a failure as "-errno" with
-errno in 1 .. 4095, so every failure lands in the top 4095 values of
-the unsigned range, while every count the kernel completed - however
-large - stays below it.  Comparing against the magnitude of the error
-instead would read a completed write of 4096 bytes or more as a
-failure, which is why that boundary has a test of its own; see
-docs/testing.
-
-yupiter_sys_write repeats the system call until the kernel has taken
-everything it was given.  A blocking write completes the whole transfer
-before it returns, but a short count is a normal result for a terminal
-whose output has been stopped and interrupted, for a non-blocking
-descriptor, and for anything else that runs out of room mid-transfer,
-so a single call reported as success would silently drop the rest of
-the buffer.  A result of zero for a request that was not zero is a
-failure rather than a retry, since repeating it would never make
-progress.
-
-yupiter_sys_read and yupiter_sys_close belong to the platform layer used
-by the input functions; yupiter_sys_read now reports the count it
-completed through its output parameter.  They are kept next to the
-write wrapper so that the whole operating-system surface stays in one
-file, and they share the same classification, so a read of 4096 bytes
-or more is a success there too.
-
-yupiter_sys_exit uses exit_group rather than exit so that every thread
-of the process is terminated.  yupiter creates no threads, but a
-program linked against it may.  It never returns.
-
-
-The system-call trampolines
----------------------------
-
-The trampolines live in assembly/yupiter_syscall_aarch64.S,
-assembly/yupiter_syscall3_aarch64.S, assembly/yupiter_syscall_x86_64.S and
-assembly/yupiter_syscall3_x86_64.S.  The Linux system-call ABI is not the
-ordinary C calling convention, and it is not the same on the two
-architectures this library implements, so each has a trampoline of its
-own.  Both architectures provide two entry points, one file each:
-yupiter_syscall takes six arguments, and yupiter_syscall3 takes three.  The
-platform layer uses the three-argument form for read, write, close and
-exit_group, which is every call it wraps; keeping it in a separate
-object means those calls do not pay for argument moves they do not
-need.  The six-argument form remains for a future call that needs more
-registers.
-
-On aarch64 the number is carried in x8 rather than x0, the arguments
-in x0..x5 and the result comes back in x0.  Arguments are passed in
-the same registers the C convention uses, so the trampoline only has
-to shift every argument one register to the right, move the number
-into place and execute "svc #0":
-
-    yupiter_syscall:   mov x8, x0       /* number       */
-                     mov x0, x1       /* arguments    */
-                     ...              /* x0 .. x5     */
-                     svc #0
-                     ret
-
-    yupiter_syscall3:  mov x8, x0       /* number       */
-                     mov x0, x1       /* arguments    */
-                     mov x1, x2       /* x0 .. x2     */
-                     mov x2, x3
-                     svc #0
-                     ret
-
-On x86_64 the number goes in rax, the result comes back in rax, the
-fourth argument goes in r10 - the "syscall" instruction destroys rcx,
-the register the C convention uses for that argument - and the sixth
-argument is passed on the stack.  The trampoline permutes the argument
-registers and then executes "syscall":
-
-    yupiter_syscall:   movq %r8, %r10      /* arg4, not rcx */
-                     movq %r9, %r8       /* arg5          */
-                     movq 8(%rsp), %r9   /* arg6          */
-                     movq %rdi, %rax     /* number        */
-                     movq %rsi, %rdi     /* arguments     */
-                     ...                 /* rsi, rdx      */
-                     syscall
-                     ret
-
-    yupiter_syscall3:  movq %rdi, %rax     /* number        */
-                     movq %rsi, %rdi     /* arguments     */
-                     movq %rdx, %rsi     /* rdi, rsi, rdx */
-                     movq %rcx, %rdx
-                     syscall
-                     ret
-
-The raw kernel return value is returned unmodified, so callers
-interpret the "-4095 .. -1" range themselves; the kernel reports a
-failure that way on both architectures.  Only registers the C calling
-convention already lets a function destroy are touched - x0..x18 on
-aarch64, and rax, rcx, rdx, rsi, rdi, r8, r9, r10 and r11 on x86_64 -
-so no explicit save or restore is needed.
-
-Written in GNU assembler (GAS) syntax, as the project conventions
-require.
-
-
-The entry points
-----------------
-
-The two entry points, assembly/yupiter_start_aarch64.S and
-assembly/yupiter_start_x86_64.S, are the first code that runs.
-
-The kernel enters _start with the initial stack layout:
-
-    sp / rsp        the top of the initial stack
-    [sp] / [rsp]    argc
-    sp / rsp + 8    argv[0], ..., argv[argc], NULL
-                    envp[0], ..., NULL
-
-yupiter_start_aarch64.S clears the frame pointer (x29) and the link register
-(x30) so that a stack unwinder stops cleanly at the bottom of the
-stack, reads the three values, calls main(argc, argv, envp) and passes
-main's return value to yupiter_sys_exit, which becomes the exit status.
-The branch to the exit wrapper is a tail branch rather than a call,
-since the wrapper never returns: the stack stays 16-byte aligned and no
-return address is needed.  yupiter_start_x86_64.S does the same with the frame
-pointer (rbp), and aligns the stack to 16 bytes before the call, as the
-System V AMD64 ABI requires.  It keeps the call rather than tail
-branching because, after main returns, %rsp is 16-byte aligned; the
-call makes yupiter_sys_exit enter with the 8-mod-16 alignment the System
-V ABI promises a called function.
-
-There is deliberately no more here than the ABI requires: no
-constructors, no ".init_array" walk, no thread-local storage and no
-atexit handling.  Those facilities are documented as unsupported by
-this release, which is also why the formatted functions flush
-themselves instead of registering an exit-time flush.
-
-
-The string helpers (io/string.cxx)
-----------------------------------
-
-yupiter_strlen, yupiter_memcpy and yupiter_memset live here because the
-library is linked with -nostdlib: it may not call those names from a
-host C library, since they would either be missing at link time or
-silently resolve to a different implementation than the one under
-test.  They are prefixed so they never collide when yupiter is linked
-into a hosted program, and none of them is part of the public API.
-
-yupiter_memcpy and yupiter_memset move sixteen bytes at a time through a
-local byte block.  The block is what lets the compiler emit wide loads
-and stores while the function keeps reading and writing only inside the
-caller's length; casting the pointers to a wider type would raise the
-alignment and aliasing questions the C++ object model does not let a
-byte copy answer.  A shorter tail is copied one byte at a time.
-
-yupiter_strlen walks the string one byte at a time and stops at the
-terminating null.  A word-at-a-time strlen could read past the null and
-outside the object, so it is deliberately not used even though it would
-scan faster.
-
-The heap allocator in mem/heap.cxx uses yupiter_memcpy to move block
-headers in and out of the arena; see docs/heap for why.
+Linux syscall numbers and register conventions per architecture.
+yupiter_sys_read, yupiter_sys_write, yupiter_sys_close, yupiter_sys_exit
+wrap the trampolines in assembly/yupiter_syscall*.S.  Raw syscall
+helpers are used by tests for short-write scenarios.
