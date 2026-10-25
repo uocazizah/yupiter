@@ -27,6 +27,8 @@ Exposed symbols
 ---------------
 
 Output: printf, fprintf.
+Input: getchar, fgetc, fgets, fread, ungetc, feof, ferror, clearerr,
+       fflush.
 Memory: malloc, free, realloc.
 Safe memory: malloc_safe, free_safe, realloc_safe, plus checked
 variants.
