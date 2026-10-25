@@ -4,27 +4,14 @@ building yupiter
 Requirements
 ------------
 
-  * GNU Make 3.82 or newer.  The Makefile uses simply-expanded
-    variables, pattern rules and "-include"; a POSIX make is not
-    enough.
-  * A POSIX shell, sed, awk, install, nm and readelf.  They are used by
-    ./configure and by the test scripts; no CMake, Python or generator
-    is needed at any point.
-  * GNU or Clang C and C++ compilers (the flags are GNU-style and are
-    only used after the compiler has been identified).
-  * A C++23 compiler whose standard library supports freestanding
-    mode: the implementation includes "<climits>", "<cstdarg>",
-    "<cstddef>" and "<cstdint>" with "-ffreestanding -fno-exceptions
-    -fno-rtti".  libstdc++ provides that from GCC 13 on; libc++ and the
-    MSVC standard library do not implement freestanding mode, and
-    ./configure fails with a message that names what is missing
-    instead of quietly building a hosted program.
-  * Linux on aarch64 or on x86_64.  Any other operating system or
-    architecture is rejected at configure time rather than silently
-    mapped onto an implementation that does not match it.
+  * GNU Make 3.82 or newer.
+  * POSIX shell, sed, awk, install, nm, readelf.
+  * GNU or Clang C and C++ compilers.
+  * A C++23 compiler with freestanding standard library support
+    (libstdc++ from GCC 13; libc++ and MSVC do not).
+  * Linux on aarch64 or x86_64.
 
-No network access, no package manager and no third-party dependency
-is needed at any point.
+No network access, package manager or third-party dependency is needed.
 
 
 Quick start
@@ -35,362 +22,45 @@ Quick start
     make check
     make install
 
-"make" builds both libyupiter.a and libyupiter.so by default.  The
-build tree is always "build" in the source directory: it is removed by
-"make clean" and ignored by Git.  ./configure detects the target and
-writes config.mk, which every later make invocation includes; running
-./configure again is the only way to change an option.
-
-    make static       libyupiter.a only
-    make shared       libyupiter.so only
-    make check        build and run the test suite
-    make install      install headers, libraries and package metadata
-    make uninstall    remove the installed files
-    make distclean    remove the build tree and config.mk
+"make" builds libyupiter.a and libyupiter.so by default.  The build
+tree is always build/ in the source directory.  make clean removes it.
 
 
 Configure options
 -----------------
 
-./configure accepts the options below; ./configure --help prints the
-same list.
+Run ./configure --help.  Common options:
 
---prefix=PATH
-    Installation prefix, /usr/local by default.  It must be absolute.
+    --cc, --cxx            Compiler selection.
+    --build-type           debug, relwithdebinfo, release.
+    --heap-size            Arena size in bytes (>= 64).
+    --enable-static        yes/no.
+    --enable-shared        yes/no.
+    --enable-tests         yes/no.
+    --arch                 aarch64 or x86_64.
 
---bindir=DIR, --libdir=DIR, --includedir=DIR
-    Installation directories relative to the prefix: bin, lib and
-    include by default.  They must be relative, because the installed
-    CMake package derives the prefix from its own location.
+Unknown build types, empty arenas and unsupported architectures are
+rejected at configure time.
 
---arch=ARCH
-    Target architecture: aarch64 or x86_64.  It is detected from
-    uname when the option is not given.
 
---cc=CC, --cxx=CXX
-    C and C++ compilers, "cc" and "c++" by default.  The CXX
-    environment variable is honoured when the option is not given, as
-    are CC, AR, RANLIB, NM, READELF and INSTALL.
+Flags
+-----
 
---build-type=TYPE
-    debug (-O0 -g3), release (-O2 -DNDEBUG), relwithdebinfo (-O2 -g
-    -DNDEBUG) or minsize (-Os -DNDEBUG).  RelWithDebInfo when the
-    option is not given, so a default build is optimised and still
-    carries debug information.
+The library is freestanding C++23: -ffreestanding, -fno-builtin,
+-fno-stack-protector, -fno-exceptions, -fno-rtti,
+-fno-threadsafe-statics, -fvisibility=hidden.  The tests are hosted
+C17/C++17 with the same warnings but no freestanding restrictions,
+because they link the archive and the startup file.
 
---enable-static=yes|no
-    Build libyupiter.a.  Yes by default.
+The public header and C tests are ISO C17 with extensions off; the
+implementation is ISO C++23 with extensions off.  The C++ compatibility
+test is C++17 on purpose.
 
---enable-shared=yes|no
-    Build libyupiter.so.  Yes by default.  At least one of the two
-    libraries must be enabled.
 
---enable-tests=yes|no
-    Build the test programs.  Yes by default.  The tests link the
-    static archive, so they require --enable-static=yes.
+Freestanding check
+------------------
 
---heap-size=BYTES
-    Size in bytes of the dynamic memory arena (4096 by default).  It
-    reaches the allocator as a compile definition, so the configured
-    value is the only one the library is built with; it reaches the
-    test programs the same way, so none of them is built against a
-    different value from the library it links.
-
-    The smallest arena that can work is 64 bytes: every block carries a
-    header of its own, and an arena that cannot hold one block and the
-    payload of another can serve no program at all.  The configure
-    guard rejects anything below 64, and anything that is not a plain
-    decimal number, when the project is configured rather than when it
-    runs.
-
-    The tests do not depend on the value: they ask the allocator what
-    it has and shape each scenario to fit, so the same sources pass from
-    64 bytes upwards, and a smaller heap only makes a leak show up
-    sooner.
-
-For example:
-
-    ./configure --build-type=debug --heap-size=1024
-    ./configure --prefix="$HOME/.local"
-    ./configure --enable-shared=no
-    ./configure --arch=aarch64 --cc=aarch64-linux-gnu-gcc \
-                --cxx=aarch64-linux-gnu-g++
-
-
-How the flags are chosen
-------------------------
-
-The library is compiled as freestanding C++23 and the tests are not,
-for reasons that matter:
-
-    library    -std=c++23 <C++ warning set> -ffreestanding -fno-builtin
-               -fno-stack-protector -fno-exceptions -fno-rtti
-               -fno-threadsafe-statics -fPIC -fvisibility=hidden
-
-    C tests    -std=c17 <C warning set> -fno-builtin -fno-stack-protector
-
-    C++ test   -std=c++17 <C++ warning set>
-
-    link       -nostdlib -static
-
-  * "-ffreestanding" is deliberately not used for the test programs:
-    it makes clang treat main() as an ordinary function, mangles its
-    name and removes the implicit "return 0", so the program would
-    exit with whatever the last call left in the return register.
-  * "-fno-builtin" stops a call from being rewritten into a compiler
-    builtin that this library does not provide.
-  * "-fno-stack-protector" removes the need for a failure handler
-    symbol that does not exist here.
-  * "-fno-exceptions", "-fno-rtti" and "-fno-threadsafe-statics" keep
-    the C++ runtime out of the library: no unwinder, no personality
-    routine, no type information and no guard variables for
-    function-local statics.  An object that would need dynamic
-    initialization is rejected while the library is compiled - the
-    stream objects and the heap arena are "constinit", which is
-    exactly the promise the freestanding entry point needs, since it
-    runs no constructors.
-  * "-nostdlib -static" makes the library's own _start, its printf and
-    its string helpers the only ones available at link time, which is
-    the point of the whole exercise.  "-static" is also what keeps the
-    result a plain non-PIE executable: both drivers already imply
-    "-no-pie" for a static link, and passing it as well only makes
-    Clang report it as an unused argument on every link.
-  * "-fPIC" is used for the objects of both libraries, so a static
-    archive can also be linked into a position-independent executable,
-    which matters on aarch64.
-  * "-fvisibility=hidden" and YUPITER_PUBLIC make the shared object
-    export the documented C interface and nothing else.  The public
-    header marks every exported declaration; internal helpers stay
-    hidden.
-  * The default RelWithDebInfo build type contributes "-O2 -g
-    -DNDEBUG".  The library itself has no assert calls, so -DNDEBUG
-    changes nothing in the archive; -O2 is what lets the block copies
-    in io/string.cxx become wide loads and stores, and -g keeps a
-    failure readable in a debugger.
-
-The same warning set is used for the library and for the C tests, so a
-test can never be sloppier than the code it exercises:
-
-    -Wall -Wextra -Wpedantic -Werror
-    -Wconversion -Wsign-conversion -Wshadow
-    -Wstrict-prototypes -Wmissing-prototypes -Wcast-qual
-    -Wundef -Wswitch-default -Wdouble-promotion -Wvla
-
-The C++ sources use the same set without the two prototype options,
-which only exist for C, and with four additions that keep a C++
-implementation honest:
-
-    -Wold-style-cast -Wnon-virtual-dtor -Woverloaded-virtual
-    -Wzero-as-null-pointer-constant
-
-Every one of them is understood by both GNU C++ and Clang, so no check
-is made before they are passed.  The format check stays enabled for
-every test program; the few cases that pin down behaviour the standard
-leaves undefined, or that the check rejects, are called through a
-function pointer in the test source, for a reason that is written down
-where it applies.  See docs/testing.
-
-The public header and the C test programs are built as C17 with
-extensions off, and the implementation is built as C++23, also with
-extensions off.  The C++ compatibility test is built as C++17 on
-purpose: the archive is meant to be consumable from an older C++ as
-well, and the test proves it.
-
-A static library is never linked on its own, so the properties above
-are checked on the archive itself: the archive_is_freestanding test
-inspects every member for references to a C library or a C++ runtime,
-for exported mangled names and for sections that run code before the
-program.  The shared object is inspected the same way, and it must
-also have no undefined dynamic symbols and no NEEDED entry.  See
-docs/testing.
-
-
-Static and shared libraries
----------------------------
-
-Both libraries are built from the same object set, so their code is
-identical; only the link step differs.
-
-libyupiter.a is the freestanding archive.  It contains the startup file
-of the target, so a program linked with "-nostdlib" gets its entry
-point from it.  A hosted program that links the archive does not pull
-that member in, because nothing refers to "_start" in such a program,
-and its own C runtime keeps providing the entry point.
-
-libyupiter.so.1.0.2 is the hosted shared object.  It excludes the
-startup file, carries SONAME libyupiter.so.1 and the usual two links
-(name and soname), and names no shared library it needs: no C library
-and no C++ runtime.  It is loaded by a program that already has an
-entry point.
-
-
-Installation
-------------
-
-The default prefix is /usr/local, which normally needs the privileges
-of the root user:
-
-    ./configure
-    make
-    sudo make install
-
-A per-user installation needs no privileges and puts everything below
-the home directory:
-
-    ./configure --prefix="$HOME/.local"
-    make
-    make install
-
-The prefix belongs on the configure line, not on the install line: the
-paths written into yupiter.pc are fixed when the project is
-configured.
-
-"make install" honours DESTDIR for a package builder:
-
-    make install DESTDIR=/tmp/stage
-
-When the shared object is installed into the running system (DESTDIR
-is empty), "make install" refreshes the dynamic linker cache with
-ldconfig, so a program linked with "-lyupiter" finds libyupiter.so.1
-without LD_LIBRARY_PATH.  A staged installation is left untouched: the
-package manager of the target system runs the target's ldconfig when
-the package is unpacked.  The refresh is also skipped when only the
-static archive is built.
-
-If ldconfig is unavailable or cannot write the cache, the files are
-still installed and a warning explains what to run.  The program is
-"ldconfig" by default; "make install LDCONFIG=..." selects another
-one, and an empty LDCONFIG disables the refresh.  "make uninstall"
-refreshes the cache again after removing the files.  A prefix that is
-not already in the loader's search path, such as a per-user
-installation, still needs an entry in /etc/ld.so.conf.d/ or
-LD_LIBRARY_PATH; "make install" reports that case after the refresh.
-
-Installed are the two headers (yupiter.h and yupiter.hpp), the static
-archive, the shared object with its two links, the pkg-config file and
-the CMake package configuration.
-
-
-Consuming the library
----------------------
-
-With pkg-config:
-
-    cc my_program.c $(pkg-config --cflags --libs yupiter)
-
-A prefix outside the search path of pkg-config, such as the home
-directory, is not looked in by default:
-
-    PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig" \
-        cc my_program.c $(pkg-config --cflags --libs yupiter)
-
-With CMake (the package configuration is installed whether or not
-CMake was used to build the library):
-
-    find_package(yupiter REQUIRED)
-    target_link_libraries(my_program PRIVATE yupiter::yupiter)
-
-pointing CMake at the prefix with -DCMAKE_PREFIX_PATH=<prefix>.
-yupiter::yupiter is the shared library when the package provides one
-and the static library otherwise; yupiter::yupiter_shared and
-yupiter::yupiter_static name a particular kind.
-
-The archive is linked the same way from C and from C++: it exports the
-C interface, refers to nothing outside itself except the program's
-main, and needs no C++ runtime, so a C program can link it with a C
-driver and a C++ program needs no C++23 support of its own - the C++
-compatibility test is built as C++17 to prove that.
-
-Note that the library is freestanding by design: a program linked
-without a C runtime needs the entry point that yupiter provides, and
-one linked with a normal C runtime gets its entry point from there
-instead.
-
-One detail of linking without a C runtime is worth knowing before it is
-met the hard way, because the symptom - the program dies with SIGBUS
-before main() has done anything - says nothing about the cause.  GNU ld
-places the read-write segment at a file offset congruent to its virtual
-address modulo the maximum page size of the target (64 KiB on aarch64,
-4 KiB on x86_64), and it pads the file out to that offset only when it
-has something to write there.  A static executable with nothing
-file-backed in its read-write segment - no
-global object with an initializer, nothing the linker has to write into
-the image - therefore has that segment placed past the end of the file,
-the kernel maps the page from there, and the first access to the .bss
-that follows it is reported as SIGBUS.  One initialized object anywhere
-in the program is enough to prevent it, and a program that uses
-yupiter_stdout or yupiter_stderr already has several.  Linking with
-"-z max-page-size=4096" avoids it as well, at the cost of executables
-that a kernel with 64 KiB pages may refuse to load; the test suite
-prefers the initialized object.  test/largewrite.c records the same
-thing where it applies.
-
-
-Continuous integration
-----------------------
-
-The workflows under .github/workflows/ build and test the library on
-native runners, so nothing there is cross-compiled: the matrix has rows
-on x86_64 runners and rows on aarch64 runners.  On every push and pull
-request it checks:
-
-  * the build and the test suite under GNU C and under Clang, with
-    RelWithDebInfo for the ordinary rows, Debug for the smallest-arena
-    row and Release for the static-only row, at the default arena size,
-    at the smallest one the configure script accepts and at an
-    intermediate size, so the boundary the allocator documents is
-    exercised as well as the ordinary case;
-  * the static library, the shared library and both, so a configuration
-    that disables one of them is still built and inspected; the
-    shared-only rows verify the object, its SONAME and its exports
-    because the test programs link the static archive;
-  * test/expected-format.txt regenerated from the host C library on
-    both architectures, which fails if the golden file in the
-    repository no longer matches what a reference library prints, so it
-    cannot drift into being a snapshot of yupiter;
-  * the configure guard, which has to reject the arena sizes, the build
-    types, the library combinations and the architectures it documents
-    as impossible, and accept the alias spellings of the implemented
-    architecture.
-
-Every step the workflow runs can be run by hand with the commands in
-this document and in docs/testing.
-
-
-Porting
--------
-
-The platform-specific pieces are chosen in exactly two places, and a
-new operating system or architecture has to satisfy both:
-
-  1. ./configure decides what is supported.  It accepts Linux on
-     aarch64 (aarch64, arm64, ARM64) and Linux on x86_64 (x86_64,
-     amd64, AMD64) and fails with a clear message for anything else,
-     so an unimplemented target can never silently pick an incompatible
-     implementation.  The processor it selects also names the assembly
-     files of the target.
-
-  2. The implementation itself:
-       assembly/yupiter_start_<processor>.S    program entry point,
-       assembly/yupiter_syscall_<processor>.S  six-argument system-call
-                                               trampoline,
-       assembly/yupiter_syscall3_<processor>.S three-argument
-                                               system-call trampoline,
-       io/syscall_linux.cxx                    system-call numbers, one
-                                               block per architecture.
-
-A port adds the files for its target, teaches the configure script about
-them and adds the architecture's system-call numbers to
-io/syscall_linux.cxx, keeping every operating-system-specific and
-architecture-specific value out of the portable code in io/ and mem/.
-The system-call layer is the only place where numbers and register
-conventions appear.
-
-Cross-compilation is possible by naming the target and the cross
-compiler together, for example:
-
-    ./configure --arch=aarch64 \
-        --cc=aarch64-linux-gnu-gcc --cxx=aarch64-linux-gnu-g++
-
-It is not claimed to work until a toolchain for the target has built
-the library and its tests successfully.
+archive_is_freestanding inspects the archive and shared object for
+references to a C library or C++ runtime, mangled names, and
+initializer sections.  The shared object must also have no undefined
+dynamic symbols and no NEEDED entry.  See test/check-freestanding.sh.
