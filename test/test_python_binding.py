@@ -51,6 +51,15 @@ def test_module_all():
     assert yupiter.__all__ == [
         "yupiter_printf",
         "yupiter_fprintf",
+        "yupiter_getchar",
+        "yupiter_fgetc",
+        "yupiter_fgets",
+        "yupiter_fread",
+        "yupiter_ungetc",
+        "yupiter_feof",
+        "yupiter_ferror",
+        "yupiter_clearerr",
+        "yupiter_fflush",
         "yupiter_malloc",
         "yupiter_free",
         "yupiter_realloc",
@@ -111,6 +120,51 @@ def test_fprintf_empty():
 def test_fprintf_return_count():
     text = "xyz"
     assert yupiter.yupiter_fprintf(yupiter.STDOUT, text) == len(text)
+
+
+# --- Input functions ---
+
+
+def test_getchar_type():
+    result = yupiter.yupiter_getchar()
+    assert isinstance(result, int)
+
+
+def test_fgetc_type():
+    result = yupiter.yupiter_fgetc(yupiter.STDIN)
+    assert isinstance(result, int)
+
+
+def test_fgets_none_on_empty():
+    # Reading with n=0 returns None.
+    assert yupiter.yupiter_fgets(yupiter.STDIN, 0) is None
+
+
+def test_fread_empty():
+    data = yupiter.yupiter_fread(yupiter.STDIN, 1, 0)
+    assert data == b""
+
+
+def test_ungetc_type():
+    result = yupiter.yupiter_ungetc(65, yupiter.STDIN)
+    assert isinstance(result, int)
+
+
+def test_feof_type():
+    assert isinstance(yupiter.yupiter_feof(yupiter.STDIN), bool)
+
+
+def test_ferror_type():
+    assert isinstance(yupiter.yupiter_ferror(yupiter.STDIN), bool)
+
+
+def test_clearerr_callable():
+    yupiter.yupiter_clearerr(yupiter.STDIN)
+
+
+def test_fflush_type():
+    result = yupiter.yupiter_fflush(yupiter.STDOUT)
+    assert isinstance(result, int)
 
 
 # --- Basic memory functions ---
