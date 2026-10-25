@@ -1,341 +1,43 @@
 map of the yupiter repository
 =============================
 
-yupiter is a small, freestanding standard C library for Linux on
-aarch64 and on x86_64.  It is built and linked without any host C
-library: it provides its own program entry point, its own system-call
-layer and its own formatting engine, which is what makes the test
-programs a complete demonstration of the library rather than a hosted
-build that happens to contain it.
-
-The interface of the library is ISO C17: programs written in C and
-programs written in C++ both link it, and the C test programs include
-the internal headers as well.  The implementation behind that
-interface is ISO C++23; it is compiled freestanding, so it still may
-not call a host C library or use a C++ runtime.
-
-This document lists every entry in the repository and says what it is
-for.  The documents listed at the end describe the larger pieces.
+yupiter is a freestanding C library for Linux on aarch64 and x86_64.
+No host C library is used: it supplies its own entry point, syscall
+layer and formatting engine.  The interface is ISO C17; the
+implementation is ISO C++23, built freestanding.
 
 
 Top-level entries
 -----------------
 
-    .github/          Automation: the build and test workflows,
-                      dependency updates and code scanning.
-    python/           Python binding (PyO3/maturin): Cargo.toml,
-                       pyproject.toml, build.rs and src/lib.rs.  Not
-                       part of the library build; requires a built
-                       yupiter and links against libyupiter.so.
-                       Documented in docs/python-binding.
-    .gitignore        Ignore rules for objects, libraries and builds.
-    AGENTS.md         Conventions for automated agents working here.
-    AUTHORS           Who maintains the project.
-    ChangeLog         Points at Git as the detailed change history.
-    configure         POSIX shell script that detects the target and
-                      writes config.mk.
-    Makefile          The top-level build: includes config.mk and the
-                      modules in mk/.
-    mk/               The Makefile modules: variables, rules, library,
-                      tests, package metadata and installation.
-    docs/             This directory: the documentation.
-    etc/              Templates for the installed package metadata.
-    include/          The public headers and the internal headers the
-                      tests share with the library.
-    io/               The C++23 sources of the input/output layer.
-    LICENSE           The license overview and how to choose.
-    LICENSES/         The full license texts and their explanation.
-    mem/              The dynamic memory allocator (C++23).
-    NEWS              Release notes, newest release first.
-    README            The project overview and the license summary.
-    test/             The test programs and the shell test harness.
-    build/            The generated build tree; it is ignored by Git,
-                      removed by "make clean" and not part of the
-                      source.
-
-
-assembly/ - the runtime in assembly
------------------------------------
-
-    yupiter_start_aarch64.S
-                      Program entry point for Linux on aarch64.  The
-                      kernel enters _start with argc, argv and envp on
-                      the stack; the file clears the frame chain, calls
-                      main(argc, argv, envp) and hands main's return
-                      value to yupiter_sys_exit.  There are no
-                      constructors, no ".init_array" walk and no atexit
-                      handling: the freestanding startup path does not
-                      provide them.  Documented in docs/io.
-    yupiter_start_x86_64.S
-                      The same for Linux on x86_64.  It also aligns
-                      the stack to 16 bytes before the call, as the
-                      System V AMD64 ABI requires.
-    yupiter_syscall_aarch64.S
-                      The six-argument system-call trampoline for
-                      aarch64.  It converts the ordinary C calling
-                      convention into the Linux system-call convention
-                      (number in x8, arguments in x0..x5, result in x0)
-                      with a single "svc #0".  Documented in docs/io.
-    yupiter_syscall3_aarch64.S
-                      The three-argument trampoline for read, write,
-                      close and exit, split out so those calls do not
-                      pay for the three extra argument moves.
-                      Documented in docs/io.
-    yupiter_syscall_x86_64.S
-                      The six-argument trampoline for x86_64: the
-                      number goes in rax, the fourth argument in r10,
-                      and the kernel is entered with "syscall".
-                      Documented in docs/io.
-    yupiter_syscall3_x86_64.S
-                      The three-argument form for x86_64: it avoids the
-                      fourth, fifth and sixth argument moves, including
-                      the load from the stack.  Documented in docs/io.
-
-
-io/ - the input/output layer
-----------------------------
-
-    The sources here are ISO C++23.  Every function the headers declare
-    is defined with C linkage, so the library exports the C interface
-    and nothing else; the declarations live in include/yupiter_io.hxx.
-
-    file.cxx          The three standard streams (yupiter_stdin,
-                      yupiter_stdout, yupiter_stderr) and the staging
-                      logic: yupiter_stream_write, yupiter_stream_flush
-                      and yupiter_stream_discard.  A write that starts
-                      with an empty buffer is handed to the kernel
-                      directly when the stream is unbuffered or the
-                      payload is larger than the staging buffer.  The
-                      stream objects are "constinit", so they need no
-                      dynamic initialization.  Documented in docs/io.
-    vfprintf.cxx      The formatting engine, yupiter_vfprintf.  Parser
-                      and formatter live in one translation unit.
-                      Documented in docs/formatting.
-    printf.cxx        yupiter_printf: the yupiter_stdout wrapper around
-                      yupiter_vfprintf.
-    fprintf.cxx       yupiter_fprintf: the same for a given stream.
-    syscall_linux.cxx The operating-system wrappers
-                      (yupiter_sys_write, yupiter_sys_read,
-                      yupiter_sys_close, yupiter_sys_exit) and the only
-                      place where Linux system-call numbers appear.
-                      Documented in docs/io.
-    string.cxx        The internal helpers yupiter_strlen, yupiter_memcpy
-                      and yupiter_memset, which exist so that the
-                      library links with "-nostdlib" without taking
-                      symbols from a host C library.  The copy and
-                      fill helpers move sixteen bytes per iteration;
-                      the length helper stays byte-wise so it never
-                      reads past the terminator.
-
-
-mem/ - dynamic memory
----------------------
-
-    heap.cxx          The allocator: a static arena, first-fit block
-                      allocation with splitting and merging, resizing
-                      in place or by moving, the safe variants that
-                      terminate the process on a detected fault, the
-                      checked variants that report yupiter_memory_status
-                      instead, and the accounting the tests assert on.
-                      The arena is an array of "std::byte" and the block
-                      state is a fixed-width scoped enumeration, so the
-                      on-arena layout is the same on every target.
-                      Documented in docs/heap.
-
-
-include/ - the headers
-----------------------
-
-    yupiter.h         The C header: the version macros, the streams,
-                      yupiter_printf, yupiter_fprintf and the dynamic
-                      memory functions yupiter_malloc, yupiter_free,
-                      yupiter_realloc, yupiter_malloc_safe,
-                      yupiter_free_safe, yupiter_realloc_safe,
-                      yupiter_free_checked and yupiter_realloc_checked,
-                      with the yupiter_memory_status enumeration the
-                      checked functions return.  The comments in this
-                      file are the contract of the library.  It depends
-                      only on "<stdarg.h>" and "<stddef.h>", so it works
-                      in a freestanding build.  Documented in
-                      docs/formatting and docs/heap.
-    yupiter.hpp       The C++ entry point: it includes yupiter.h
-                      inside an "extern "C"" specification so the
-                      symbols are not mangled.  No C++ runtime is
-                      required.
-    yupiter_io.hxx    The internal interface shared by the I/O layer
-                      and the platform layer: the stream structure,
-                      YUPITER_BUFFER_SIZE and the internal function
-                      declarations.  It is not installed, and it is
-                      kept ISO C17 so the C tests can include it; the
-                      declarations are wrapped in an "extern "C"" for
-                      the C++23 implementation.
-    yupiter_mem.hxx   The internal header of the allocator:
-                      YUPITER_HEAP_SIZE and the accounting queries used
-                      by the tests.  It is not installed and follows
-                      the same rules as yupiter_io.hxx.
-
-
-etc/ - installed package metadata
----------------------------------
-
-    yupiter.pc.in     Template of the pkg-config file, filled in by the
-                      build with the chosen prefix.
-    yupiter-config.cmake.in
-                      Template of the CMake package config, so a
-                      consumer can "find_package(yupiter)".  The build
-                      fills in the architecture, the library kind and
-                      the relative installation directories.
-    yupiter-config-version.cmake.in
-                      Template of the CMake package version file, which
-                      states the compatibility rule of the 1.x series.
-
-    None of these files needs CMake to be installed on the build host:
-    the templates are filled in with sed by mk/package.mk.
-
-
-test/ - the test programs
--------------------------
-
-    run-tests.sh      The test runner: builds nothing, runs every test
-                      program and the three shell checks, prints PASS or
-                      FAIL per check and exits non-zero when one failed.
-    check-freestanding.sh
-                      Inspects the built archive and shared object: every
-                      undefined symbol has to be "main" or a yupiter
-                      symbol, no exported symbol may be outside the C
-                      interface, no member may hold a section that runs
-                      code before the program, and the shared object may
-                      name no NEEDED library.
-    check-artifact-paths.sh
-                      Passes option-like and @response artifact names to
-                      the inspection scripts, so a name that a tool would
-                      otherwise interpret as an option is still treated as
-                      a path.
-    install-test.sh   Stages "make install DESTDIR=...", checks the
-                      installed files, and builds consumer/ against the
-                      staged prefix with pkg-config and, when available,
-                      with find_package(yupiter).
-    consumer/         A small project that consumes the installed
-                      package.  It is not part of the yupiter build.
-
-    The programs:
-
-    index.c, index.cxx
-                      The original smoke test, once as C and once as
-                      C++, proving the public header works from both.
-                      The C++ one is a hosted program: a C++ program
-                      needs the C++ runtime for its own start-up.  It
-                      is compiled as C++17 on purpose, so the test
-                      proves that consuming yupiter does not require
-                      C++23.
-    format.c          The formatting engine, against golden output a
-                      reference C library produced from the same
-                      source.
-    differential.c    The same engine, compiled once against the host C
-                      library and once against yupiter and compared
-                      case by case, over cases built at run time.
-    errors.c          The failure paths of the formatted functions.
-    stream.c          The staging buffer, the discard and the order of
-                      the two output streams.
-    largewrite.c      One 200000 byte write through the system-call
-                      layer, checked on a file and through a pipe.
-    shortwrite.c      Replaces the three-argument trampoline for one
-                      program, scripts short, empty, oversized and
-                      failing writes, and proves that yupiter_sys_write
-                      retries a short count until the buffer is sent.
-    string.c          The internal length, copy and fill helpers,
-                      including their null and zero-length cases.
-    heap.c            The allocator, its safe variants and the leak
-                      accounting.
-    heap_abort.c      The fail-fast paths: one scenario per run,
-                      selected on the command line.
-    test_python_binding.py
-                      The Python binding, exercised against an installed
-                      wheel.  The python-binding workflow job runs it;
-                      "make check" does not, because the test needs
-                      Python, maturin and the built wheel.
-    rawsyscall_aarch64.S, rawsyscall_x86_64.S
-                      The real three-argument trampoline compiled into
-                      shortwrite.c, so calls the mock does not script
-                      still reach the kernel.  They are test-only copies
-                      of assembly/yupiter_syscall3_<processor>.S.
-
-    The golden files:
-
-    expected-index.txt, expected-format.txt, expected-stream.txt
-                      The output the programs are compared with.  The
-                      first two were produced by a reference C library;
-                      the third states a property that only yupiter
-                      defines.  See docs/testing.
-
-    The build rules for the programs live in mk/tests.mk, not in this
-    directory.  The whole directory is documented in docs/testing.
-
-
-mk/ - the Makefile modules
---------------------------
-
-    variables.mk      Source and object lists, the warning sets, the
-                      optimisation flags, the library names and the test
-                      lists.  Every value derived from config.mk lives
-                      here.
-    rules.mk          The pattern rules that compile a .cxx or .S file
-                      into an object and the dependency-file includes.
-    library.mk        The static archive, the shared object and its two
-                      symlinks.
-    tests.mk          The test programs and the "check" target.
-    package.mk        Fills in the pkg-config and CMake package
-                      templates.
-    install.mk        "install" and "uninstall", with DESTDIR support.
-
-    config.mk is written by ./configure and is not part of the source:
-    it records the target, the compilers, the prefix, the build type,
-    the heap size and which libraries and tests to build.
-
-
-.github/ - automation
----------------------
-
-    dependabot.yml    Keeps the GitHub Actions and Cargo dependencies
-                      updated.
-    workflows/        The build and test matrix (aarch64 and x86_64,
-                      GCC and Clang, Debug, RelWithDebInfo and Release,
-                      static, shared and both), the Python binding job,
-                      the golden-file regeneration check and the
-                      configure guard.  See docs/building.
-    workflows/security.yml
-                      clang-tidy, flawfinder and the dependency review.
-    workflows/codeql.yml
-                      The CodeQL analysis workflow.  None of these
-                      files takes part in the build: this repository
-                      builds with no network access.
+.github/     CI workflows, dependency updates, code scanning.
+python/      PyO3/maturin binding.  Not part of the library build.
+             See docs/python-binding.
+assembly/    Freestanding entry point and syscall trampolines.
+io/          Streams, formatting and the Linux syscall layer (C++23).
+mem/         Allocator (C++23).
+include/     Public headers and internal headers shared with tests.
+etc/         Templates for installed package metadata.
+mk/          Makefile modules.
+docs/        This directory.
+test/        C tests plus a C++ compatibility test.
+build/       Generated build tree (ignored, removed by make clean).
 
 
 Top-level files
 ---------------
 
-    README            Project overview, repository structure and the
-                      license summary.  Points here for details.
-    NEWS              Release notes, newest release first, followed by
-                      the history of the project under its former name.
-    ChangeLog         States that Git holds the detailed history.
-    AUTHORS           The project founder, maintainer and developer.
-    LICENSE           Explains the three licenses the recipient may
-                      choose from.
-    LICENSES/         GPL-2.0.txt, LGPL-2.1.txt, Apache-2.0.txt and a
-                      README that explains how the choice works.
-    AGENTS.md         The conventions that govern changes to this
-                      tree: the language rules (C++23 implementation,
-                      C17 interface), freestanding rules, style, the
-                      priority of instructions.  Read it before
-                      editing anything.
+AUTHORS         Maintainers.
+ChangeLog       Points to Git for detailed history.
+LICENSE         License overview and how to choose.
+LICENSES/       Full license texts.
+Makefile        Top-level build.
+configure       POSIX script that detects the target, writes config.mk.
+NEWS            Release notes, newest first.
+README          Project overview.
 
 
 Where to read next
 ------------------
 
-    docs/building     configure, build, test, install, porting.
-    docs/testing      what every test proves.
-    docs/formatting   the printf engine.
-    docs/io           streams, system calls, assembly.
-    docs/heap         the allocator.
+building, then testing.  Then formatting, heap or io as needed.
