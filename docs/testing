@@ -1,319 +1,40 @@
 testing yupiter
 ===============
 
-The tests are built and run with:
+Build and run:
 
-    ./configure
+    ./configure --enable-tests=yes
+    make
     make check
 
-"make check" builds the library and every test program first, then runs
-test/run-tests.sh.  The default build type is RelWithDebInfo, so the
-ordinary run exercises the code the library ships with.  Configure with
---build-type=debug for an unoptimised run; both are covered by the
-architecture workflows.
-
-The runner prints one PASS or FAIL line per check and a summary, and
-exits non-zero when any check failed:
-
-    ...
-    PASS install_and_consume
-
-    21 checks, 0 failed
-
-A single program can be built and run by hand:
-
-    make build/test/test_heap
-    ./build/test/test_heap
-
-and the runner itself can be pointed at another build directory after
-that directory has been built by name:
-
-    make BUILD_DIR=build-debug check
-    sh test/run-tests.sh build-debug
+The runner is test/run-tests.sh.  It prints one PASS or FAIL per check
+and exits non-zero on any failure.
 
 
-What is registered today
-------------------------
-
-    index_output          golden output of index.c
-    format_output         golden output of format.c
-    differential          format.c's engine against a reference C library,
-                          case by case, at test time
-    error_handling        failure paths (self-checking)
-    stream_output         staging, discard, stream order and a payload
-                          larger than the staging buffer, merged golden
-                          output of stream.c
-    large_write_is_reported
-                          one 200000 byte write, checked for status,
-                          length and bytes on a file and on a pipe
-    short_write_retry     a scripted short write is retried to success
-    string_checks         internal length, copy and fill helpers
-    heap_checks           allocator, resizing, safe variants, leak counts
-    heap_abort_overflow   safe size overflow terminates with 134
-    heap_abort_oom        safe out of memory terminates with 134
-    heap_abort_double_free
-                          safe double free terminates with 134
-    heap_abort_invalid_pointer
-                          safe bad pointer terminates with 134
-    heap_abort_realloc_overflow
-                          safe resize overflow terminates with 134
-    heap_abort_realloc_oom
-                          safe resize exhaustion terminates with 134
-    heap_abort_realloc_double_free
-                          safe resize of a free block terminates with 134
-    heap_abort_realloc_invalid_pointer
-                          safe resize of a bad pointer terminates with 134
-    index_cxx_output      the same golden output, from C++
-    archive_is_freestanding
-                          the built archive refers to no C library and
-                          no C++ runtime, exports no mangled name and
-                          holds no section that runs code before the
-                          program; the shared object exports only the C
-                          interface and names no library it needs
-    artifact_paths        the checker inspects literal artifact filenames,
-                          including @response and option-like names
-    install_and_consume   the library installs, and a separate project
-                          builds and runs against the installation
-
-The last check stages an installation into build/install-test, checks
-that every promised file is there, then builds a consumer with
-pkg-config and, when CMake is installed, with find_package(yupiter).
-It is the only check that writes outside the test working directory,
-and it rebuilds nothing: it installs the library the current build has
-already produced.
-
-The Python binding has a separate test program,
-test/test_python_binding.py, which is not part of "make check": it
-imports the installed extension module and therefore requires a built
-wheel, Python 3.12 or newer and the module on the interpreter's search
-path.  The python-binding job in .github/workflows/build-test.yml
-builds the wheel with maturin and runs the test on both architectures.
-
-
-The kinds of test
+Registered checks
 -----------------
 
-The runner in test/run-tests.sh has one function per kind; the list
-below names the function where that helps.
-
-Golden output
-    The program prints, the runner runs it and requires two things: an
-    exit status of 0 and standard output identical to the golden file in
-    test/.  A test that fails without printing anything is still
-    reported, because the status is checked as well.
-
-    Used by index_output, format_output and index_cxx_output
-    (check_output).
-
-Merged golden output
-    The same, except that both streams are merged into one file before
-    they are compared, so the golden file records where a diagnostic
-    written to stderr lands relative to output written to stdout.
-
-    Used by stream_output (check_merged).
-
-Reference comparison
-    One source is compiled twice: once linked against yupiter and once
-    against the host C library, with -DYUPITER_REFERENCE choosing the
-    calls.  The runner runs both programs and requires them to print the
-    same bytes.  Nothing is stored, so the reference is a live one and
-    cannot drift into being a snapshot of yupiter.
-
-    Used by differential (test/differential.c, check_two).  Its cases
-    are built at run time, so every combination of flags, width and
-    precision is covered - over two thousand cases today - without the
-    file growing with them.
-
-Self-checking
-    The program performs its own checks, prints "FAIL: ..." for each one
-    that does not hold, and returns the number of failures as its exit
-    status.  Zero is a pass, so no golden file is needed.
-
-    Used by error_handling (test/errors.c), heap_checks (test/heap.c),
-    string_checks (test/string.c) and short_write_retry
-    (test/shortwrite.c).
-
-Fatal paths
-    A scenario that the library is documented to terminate with: the
-    program names the scenario on the command line, does something
-    invalid, and must end inside yupiter with status 134.  The runner
-    asserts exactly that status, so a scenario that exits cleanly, exits
-    with a different status or crashes fails the test instead of passing
-    unnoticed.
-
-    Used by the eight heap_abort_* tests (test/heap_abort.c,
-    check_fatal).  The scenario names are listed in test/run-tests.sh;
-    a new scenario is added there as well as in test/heap_abort.c.
-
-Write destinations
-    The program performs one large write and the runner runs it twice,
-    once with standard output on a regular file and once with standard
-    output on a pipe.  Each run has to report success, and the bytes that
-    arrive have to be exactly the bytes the program produced, compared
-    with the pattern the program uses rather than with a golden file of
-    two hundred thousand bytes.
-
-    Used by large_write_is_reported (test/largewrite.c,
-    check_largewrite).
-
-Mocked system call
-    A short write cannot be produced on demand by a blocking descriptor,
-    so test/shortwrite.c defines the three-argument syscall trampoline
-    itself for the duration of each scenario.  The mock records each
-    request, answers with a scripted short count or error, and forwards
-    every call it does not script - including the final exit_group - to
-    test/rawsyscall_<processor>.S, a copy of the real trampoline.  The
-    program then checks the retry cursor, the byte sequence and the
-    return status, and carries its own verdict.
-
-    Used by short_write_retry (test/shortwrite.c).
-
-Installation
-    test/install-test.sh stages "make install DESTDIR=..." into
-    build/install-test/stage, checks that the headers, the libraries and
-    the package metadata are where the install rules promised to put
-    them, then builds test/consumer/main.c twice: once with pkg-config
-    and once with find_package(yupiter) when CMake is available.  Both
-    consumers run and must print "consumed yupiter".  A missing
-    pkg-config or CMake is reported as not exercised, so the remaining
-    checks still run; the GitHub Actions runners provide both.
-
-    Used by install_and_consume.
-
-Archive inspection
-    test/check-freestanding.sh runs nm and readelf over the built
-    archive and requires three properties of every member: every
-    undefined symbol is "main", the linker-defined
-    "_GLOBAL_OFFSET_TABLE_", or a "yupiter"-prefixed symbol of the
-    library, no exported symbol is outside the C interface (only
-    "yupiter_*" and "_start"), and no member holds an ".init_array",
-    ".ctors", ".tdata" or similar section.  A static library is never
-    linked on its own, so inspecting it is the only way to prove this for
-    every member instead of only for the members a particular link
-    happens to need.  When the shared object is built, the same script
-    requires it to have no undefined dynamic symbols, to export only
-    the documented public declarations - an internal "yupiter_*" helper
-    is a failure there - to name no NEEDED library and to hold no
-    initialiser section.  The check fails rather than skips when nm or
-    readelf is missing, so the property is never assumed.
-
-    Used by archive_is_freestanding.
+Golden output, merged golden output, reference comparison, self-checking,
+fatal paths, write destinations, mocked syscall, installation, archive
+inspection.  The last check stages an install into build/install-test
+and builds a consumer with pkg-config and CMake.
 
 
 Golden files
 ------------
 
-test/expected-format.txt was produced from test/format.c by a reference
-C library rather than by yupiter itself, so the comparison is a real
-check and not a snapshot of whatever the implementation happens to do.
-Regenerate it from the repository root with a hosted compiler:
+Regenerate from the host C library, never from yupiter:
 
-    cc -std=c17 -DYUPITER_REFERENCE -w test/format.c -o /tmp/reference
-    /tmp/reference > test/expected-format.txt
+    cc -std=c17 -DYUPITER_REFERENCE -w test/format.c -o /tmp/reference-format
+    /tmp/reference-format > /tmp/expected-format.txt
+    diff -u test/expected-format.txt /tmp/expected-format.txt
 
-test/expected-index.txt matches what index.c prints.
-
-test/expected-stream.txt is different in kind: it is the merged output
-of test/stream.c run against yupiter, and it states a property that
-only yupiter defines - that stdout is flushed when a newline is staged
-while stderr is unbuffered - so a reference C library is the wrong thing
-to generate it from (glibc buffers stdout to a file and would interleave
-the two streams differently).  Regenerate it with the same redirection
-the test uses, checking the merged result before committing it:
-
-    ./build/test/test_stream > /tmp/merged 2>&1
-    cat /tmp/merged
-    cp /tmp/merged test/expected-stream.txt
-
-Regenerating any golden file changes what the library is held to:
-review the diff before committing it.
+See the golden-files job in .github/workflows/build-test.yml.
 
 
-Rules a new test follows
-------------------------
+Adding a test
+-------------
 
-  * A freestanding test is a C17 program in test/ that links
-    build/libyupiter.a, the startup object of the target and no C
-    runtime.  Its rule lives in mk/tests.mk; the pattern rule covers a
-    test that needs nothing but its own source.  A test that needs an
-    extra assembly source, a different language or a hosted link gets an
-    explicit rule next to the pattern rule, and its name is added to
-    FREESTANDING_TESTS or HOSTED_TESTS in mk/variables.mk.
-  * The C tests use the warning policy the library is built with for C,
-    plus -fno-builtin and -fno-stack-protector; the C++ test uses the
-    C++ set and is linked as a hosted program, because a C++ program
-    needs the C++ runtime for its own start-up.  The format check stays
-    enabled everywhere.  test/format.c, test/errors.c and
-    test/differential.c call the few cases that pin down behaviour the
-    standard leaves undefined or that "-Wformat" rejects - the '0' flag
-    on a string, a precision on %p, a '+' on an unsigned conversion, an
-    empty format string, a width literal too large for an int - through
-    a function pointer, so the attribute on the declaration does not
-    reject the test while every ordinary call is still checked.  The
-    reason is stated again where those cases are, in the files
-    themselves.
-  * A test that needs internals includes the internal header of that
-    layer (include/yupiter_io.hxx or include/yupiter_mem.hxx) by name;
-    the include directory is already on the path of every test.
-    errors.c does this on purpose: a stream bound to a bad descriptor
-    cannot be obtained through the public interface, and its
-    sticky-error behaviour is worth testing.  stream.c uses the same
-    header for yupiter_stream_discard, and largewrite.c for
-    yupiter_sys_write.
-  * A test that checks a value carries its own verdict (exit status), so
-    it needs no golden file.
-  * A program whose output is compared with a golden file writes nothing
-    else to standard output; a note for a reader goes to standard error,
-    which the merge in check_merged places where it belongs and the
-    golden files record.
-  * A new check is added to test/run-tests.sh with one of the existing
-    helpers, and it prints PASS or FAIL through pass() or fail().  A
-    check that cannot run must fail with a diagnostic; skipping is not a
-    pass.
-
-
-The leak policy of the heap tests
----------------------------------
-
-The allocator tests use small allocations only, so anything a bug loses
-stays small, and the accounting in include/yupiter_mem.hxx turns any leak
-into a failing check: after every scenario the live byte and block
-counts must be back at zero.  The exhaustion scenario deliberately fills
-the arena to prove that a full heap behaves - yupiter_malloc reports it,
-printf falls back to its stack buffer, and releasing everything restores
-the whole arena.  The realloc scenarios cover growth into the free tail,
-shrink with a split, an obstructed block that has to move, the null and
-zero-size cases, an invalid pointer and the safe variant; heap_abort.c
-adds the fatal overflow, exhaustion, double-free and invalid-pointer
-failures of yupiter_realloc_safe.
-
-The tests do not depend on the arena size: they ask the allocator what
-it has and shape the scenario accordingly, so the same sources run
-against any arena the build accepts.  Configuring with --heap-size=64
-and running the same tests is a supported and useful variation, and the
-configure guard rejects anything below 64.
-
-
-What is not tested
-------------------
-
-  * short_write_retry scripts the result of the three-argument syscall
-    trampoline; it proves the retry logic, not that a particular
-    terminal or descriptor returns a short count in practice.  The real
-    system-call path is covered by large_write_is_reported, which writes
-    far more than the stream buffer to a file and to a pipe and checks
-    the status, the length and every byte.
-  * The count-versus-error boundary of yupiter_kernel_result is covered
-    by yupiter_sys_write and by the input large-read test, which reads
-    more than YUPITER_BUFFER_SIZE bytes in one call.
-  * Sanitizers and valgrind are not run: a "-nostdlib" freestanding
-    program has no runtime for them.  Leak detection uses the library's
-    own accounting instead.  The hosted C++ test could be run under a
-    sanitizer by hand, but the build does not do it.
-  * Only the architectures a workflow builds the project for (Linux on
-    aarch64 and on x86_64) are exercised.  No other operating system or
-    architecture is claimed to work without a toolchain and a successful
-    build.
-  * The comparison against a reference C library covers the conversions
-    both implement.  Where they are documented to differ, the difference
-    is pinned by a golden file instead; see docs/formatting.
+Add the program in test/, its name in mk/variables.mk, and its check in
+test/run-tests.sh.  The pattern rule in mk/tests.mk covers ordinary
+freestanding tests.
