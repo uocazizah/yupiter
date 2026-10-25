@@ -1,0 +1,27 @@
+documentation style
+===================
+
+These rules apply to README and every file in docs/.  They exist to
+keep the documentation short and readable.
+
+
+Rules
+-----
+
+  * Imperative mood, active voice.  No filler openers.
+  * One idea per paragraph; no paragraph longer than six lines.
+  * Short lists or tables instead of bullet walls.  No nested bullets.
+  * No marketing words.
+  * Sentence case headings, underlined to match heading length.
+  * Code in fenced blocks when multi-line; backticks for symbols and
+    paths inline.
+  * Do not restate a previous section; link to it.
+  * Keep technical facts exact: flags, paths, symbol names, limits.
+
+
+Checks
+------
+
+  * Lines no wider than 72 columns.
+  * Spellcheck before committing.
+  * Cross-reference every new file from docs/README.
