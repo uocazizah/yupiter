@@ -2,313 +2,42 @@ the dynamic memory allocator
 ============================
 
 yupiter allocates from a private static arena of YUPITER_HEAP_SIZE
-bytes (4096 by default).  The heap never asks the operating system
-for memory, which is what lets it exist in a freestanding build, and
-it makes the worst case leak bounded: a program that loses every
-pointer it owns can lose at most the size of the arena, and the
-allocator's accounting still reports it.
+bytes (4096 by default).  The heap never asks the OS for memory, so it
+works freestanding.  Maximum loss on leaked pointers is the arena size;
+accounting still reports it.
+
+Not thread-safe.
 
 
-The public API
---------------
+Public API
+----------
 
-    void *yupiter_malloc(size_t size);
-    void  yupiter_free(void *p);
-    void *yupiter_realloc(void *p, size_t size);
-    void *yupiter_malloc_safe(size_t count, size_t size);
-    void  yupiter_free_safe(void *p);
-    void *yupiter_realloc_safe(void *p, size_t count, size_t size);
-    yupiter_memory_status yupiter_free_checked(void *p);
-    yupiter_memory_status yupiter_realloc_checked(void *p, size_t size,
-                                                  void **result);
+yupiter_malloc, yupiter_free, yupiter_realloc: standard semantics.
+yupiter_malloc_safe, yupiter_free_safe, yupiter_realloc_safe: checked
+variants that report failure instead of aborting.
+yupiter_free_checked, yupiter_realloc_checked: status-returning variants.
+yupiter_heap_live_bytes, yupiter_heap_live_blocks,
+yupiter_heap_capacity: accounting used by tests.
 
-The authoritative contract is the comment above these declarations in
-"<yupiter.h>".  In short:
-
-yupiter_malloc
-    Returns memory aligned for any object, or null.  A size of 0
-    allocates nothing and returns null, which is not a failure.
-
-yupiter_free
-    Forgiving by design: a null pointer, a pointer from outside the
-    heap, a pointer into the middle of a block or an already free
-    block is ignored without modifying anything.  Use the safe
-    variant when such a pointer must be reported instead.
-
-yupiter_realloc
-    Resizes a live block to "size" bytes and keeps its contents up to
-    the smaller of the old and the new size.  A null pointer allocates,
-    and a size of 0 releases and returns null, as C17 permits.  Growth
-    into the free space after the block and shrinking into a new free
-    tail happen in place; only a block that cannot be resized that way
-    is copied into a fresh allocation and released.  Returns null on
-    failure, leaving the original block live and unchanged.  Added
-    bytes are not initialised.
-
-yupiter_malloc_safe
-    Checks that "count * size" does not overflow, and zeroes the
-    memory it returns.  A request it cannot satisfy - a wrapping size
-    or an exhausted heap - writes a diagnostic to yupiter_stderr and
-    terminates the process with status 134.  The only null result is
-    the documented "nothing was requested" case.
-
-yupiter_free_safe
-    Same validation as yupiter_free, but a pointer that is not the start
-    of a live block is reported: diagnostic to yupiter_stderr, then
-    termination with status 134.  A null pointer still releases
-    nothing and is not an error.
-
-yupiter_realloc_safe
-    Same as yupiter_realloc, with the checks of the safe family: the
-    "count * size" product is checked for overflow, and an invalid
-    pointer, an overflowing size or an exhausted heap is fatal instead
-    of returning null.  A null pointer allocates like
-    yupiter_malloc_safe, including its zero fill; growing an existing
-    block leaves the added bytes uninitialised.  A zero count or size
-    releases the block and returns null, which is not an error.
-
-yupiter_free_checked
-    Reports instead of terminating: a null pointer succeeds, and a
-    pointer that is not the start of a live block returns
-    YUPITER_MEMORY_INVALID_POINTER.  The heap is not modified on
-    failure.
-
-yupiter_realloc_checked
-    Same resize and zero-size rules as yupiter_realloc, but it reports
-    through yupiter_memory_status and stores the new pointer through
-    "result", which must be writable storage outside the heap.  On
-    failure "result" is cleared and the original block stays live and
-    unchanged.  Alignment overflow is classified before any allocation,
-    so it is reported as YUPITER_MEMORY_OVERFLOW rather than
-    exhaustion.
-
-The heap is not thread-safe: yupiter creates no threads and provides
-no synchronisation.
+The authoritative contract is the comments in include/yupiter.h.
 
 
 Sizing
 ------
 
-YUPITER_HEAP_SIZE is defined in include/yupiter_mem.hxx with a default of
-4096 and may be overridden without editing a header:
-
-    ./configure --heap-size=1024
-    cc -DYUPITER_HEAP_SIZE=8192 ...
-
-The value must be a plain decimal number of bytes and at least 64; the
-configuration guard rejects anything else when the project is
-configured.  Static assertions in mem/heap.cxx reject a value that is
-not positive, does not fit in a size_t, or is smaller than one rounded
-block header plus one alignment unit, so a build that bypasses ./configure
-cannot produce an allocator with no room for a block.  The tests do not
-depend on the value: they ask yupiter_heap_capacity what the arena holds
-and shape each scenario to fit.
+YUPITER_HEAP_SIZE is defined in include/yupiter_mem.hxx, default 4096.
+Must be a plain decimal number, at least 64.  Static assertions reject
+invalid values.  Tests query yupiter_heap_capacity and shape scenarios
+to fit.
 
 
-Layout of the arena
--------------------
+Layout
+------
 
-The arena is one contiguous run of blocks.  Every block starts with a
-header, followed by its payload:
+One contiguous run of blocks.  Each block: header then payload.  Header
+rounded up to 16 bytes; payload sizes are multiples of 16.  Requests
+rounded up the same way.  Free blocks carry a next pointer; allocated
+blocks do not.
 
-    arena (YUPITER_HEAP_SIZE bytes, aligned for any object)
-
-    +-------------------+-------+-------+-------------------+-----
-    | payload (size_t)  | state | magic | payload bytes ... |
-    +-------------------+-------+-------+-------------------+-----
-    ^ block start                                ^ payload:
-                                                  what malloc returns
-
-    payload    usable bytes after the header, always a multiple of
-               the alignment
-    state      free or used
-    magic      0x59555049 ("YUPI"): marks bytes as a header this
-               allocator wrote
-
-The header is rounded up to alignof(std::max_align_t) - 16 bytes on
-aarch64 and on x86_64 - and every payload size is a multiple of that
-alignment too, so a payload is suitably aligned for any object.  A size
-request is rounded up the same way before it is looked for.  The state
-field is a scoped enumeration with a fixed 32-bit underlying type, so
-the on-arena layout is the same on every target.
-
-
-Allocation
-----------
-
-1. A size of 0 returns null immediately.  Otherwise the size is
-   rounded up to the alignment; a size that would wrap while being
-   rounded fails without scanning the arena.
-2. On the first use the arena becomes a single free block spanning it
-   all.
-3. The block list is scanned first-fit for a free block whose payload
-   is large enough.
-4. The chosen block is split when the leftover can hold another block
-   (a header plus one aligned payload); a smaller leftover stays with
-   the block rather than becoming an unusable fragment.
-5. The block becomes used, the accounting is increased, and the
-   payload is returned.
-
-A request larger than the arena can hold fails without scanning.
-
-
-Resizing
---------
-
-yupiter_realloc first locates and validates the block, then takes one of
-three paths:
-
-  1. Shrink: when the requested payload leaves a remainder large
-     enough for another block, the block keeps its address, its payload
-     shrinks and a free tail is written after it.  A remainder smaller
-     than a header plus one alignment unit stays with the block, so a
-     later growth does not have to move it.
-  2. Grow in place: every free block after the block is absorbed until
-     the payload is large enough.  When the result leaves a usable
-     remainder, that remainder is split back into a free tail.
-  3. Move: when the following block is in use and the free space after
-     it is still too small, a new block is allocated, the old contents
-     are copied, and the old block is released.
-
-The shrink and grow paths keep the "no two adjacent free blocks"
-invariant: a free tail is merged with any free block that follows it.
-The move path is the only one that changes the address, and it is also
-the only one that can need memory elsewhere in the arena while the old
-block is still live.  A failed move returns null (or terminates, for
-yupiter_realloc_safe) with the original block untouched.
-
-The bytes a growing resize adds are not initialised.  yupiter_realloc_safe
-can zero a fresh allocation, through its null-pointer case, but the
-allocator does not keep the requested size of a live block, so it cannot
-tell which bytes of an existing block were beyond the caller's last
-request; initialise them explicitly when an extension has to be zero.
-
-
-Release and merging
--------------------
-
-The block list maintains one invariant: no two adjacent blocks are
-free.  A split leaves the tail free next to a block that stays in use,
-and a release absorbs the free blocks on both sides of the block being
-released, so the invariant holds before and after every operation.  It
-is what lets a release do all of its work in the single walk that finds
-the block, instead of walking the arena a second time to coalesce.
-
-Before anything is touched, the pointer is classified:
-
-    outside the arena or misaligned   ignored / reported
-    not the start of a block          ignored / reported
-    block already free                double free
-    header does not add up            heap block is corrupted
-
-The check that rejects a pointer into the middle of a block is a walk
-of the block list: only offsets the list actually steps over are
-accepted, and a payload size that does not add up stops the walk
-instead of running off the end of the arena.  The same walk reports the
-block that precedes the one being released, which is the only free
-block that can be on that side.
-
-The neighbours are then validated as well - the free block before, and
-the run of free blocks after - before a single byte of the arena is
-written, so a corrupt list is reported with the list untouched.  Only
-then is the released block marked free and the neighbours absorbed into
-it.
-
-The headers of absorbed blocks stay behind as stale bytes inside the
-merged payload.  They read as free, so a double free of a block that a
-merge absorbed is still recognised instead of looking like a pointer
-into a payload, and the list walk never lands on them again.  The
-accounting is decreased by the payload of the released block alone,
-which is what keeps two releases of blocks that later merged from
-giving back the same bytes twice.
-
-Releasing everything returns the arena to a single free block; the
-tests prove it by asking afterwards for an allocation that only the
-whole arena can serve.
-
-
-Failure modes of the safe variants
-----------------------------------
-
-Each of these writes a line to yupiter_stderr and exits with status 134
-(the conventional status of an aborted process, 128 + SIGABRT):
-
-    yupiter: yupiter_malloc_safe: allocation size overflows
-    yupiter: yupiter_malloc_safe: out of memory
-    yupiter: yupiter_free_safe: pointer is outside the yupiter heap
-    yupiter: yupiter_free_safe: pointer is not the start of a heap block
-    yupiter: yupiter_free_safe: block is already free (double free)
-    yupiter: yupiter_free_safe: heap block is corrupted
-    yupiter: yupiter_realloc_safe: allocation size overflows
-    yupiter: yupiter_realloc_safe: out of memory
-    yupiter: yupiter_realloc_safe: pointer is outside the yupiter heap
-    yupiter: yupiter_realloc_safe: pointer is not the start of a heap block
-    yupiter: yupiter_realloc_safe: block is already free (double free)
-    yupiter: yupiter_realloc_safe: heap block is corrupted
-
-The diagnostic goes to yupiter_stderr, which is unbuffered, so it
-reaches the operating system before the exit system call.
-
-Because a failure ends the process, these paths are tested one
-scenario per run: test/heap_abort.c selects the scenario on the
-command line and test/run-tests.sh asserts the status.  See
-docs/testing.
-
-
-Accounting (internal)
----------------------
-
-include/yupiter_mem.hxx declares three queries used by the tests:
-
-    size_t yupiter_heap_live_bytes(void);    payload bytes reserved
-    size_t yupiter_heap_live_blocks(void);   blocks they live in
-    size_t yupiter_heap_capacity(void);      size of the arena
-
-Both counts are zero once every allocation has been released, which
-is what the tests assert after each scenario.  The header is not part
-of the public API and is not installed.
-
-
-Who allocates inside the library
---------------------------------
-
-Only the formatting engine: every formatted call borrows one block of
-97 bytes (65 for digit storage, 32 for the padding chunk) and gives it
-back before returning, falling back to stack buffers when the heap is
-exhausted.  Nothing else in the library allocates - in particular the
-stream staging buffer stays inside the stream object.  See
-docs/formatting.
-
-
-Design notes and limits
------------------------
-
-  * No system call is used, so the allocator behaves identically on
-    any operating system that builds the library, and nothing here
-    needs to grow the heap.
-  * Inside mem/heap.cxx the arena - a declared "std::byte" array - is
-    only read and written through byte lvalues, and block headers are
-    moved with yupiter_memcpy rather than by casting the storage to a
-    structure pointer, so strict aliasing is respected for everything
-    the library itself does with it.  What a caller does with the
-    payload it receives is the caller's own effective type, as with
-    any other allocator.
-  * A pointer that is freed after its offset has been handed out again
-    to a later allocation cannot be told apart from a valid pointer of
-    that later allocation.  No allocator can: the information is not
-    in the pointer.  Double frees of a block that has not been reused,
-    invalid pointers, interior pointers and misaligned pointers are
-    all detected.
-  * The tests never allocate more than a few kilobytes, so a leak in a
-    test stays that small by construction, and the accounting turns it
-    into a failing check anyway.
-
-Non-terminating checked operations
-----------------------------------
-
-yupiter_free_checked and yupiter_realloc_checked return
-yupiter_memory_status instead of invoking the fatal handler, for hosted
-callers such as language bindings.  The values are
-YUPITER_MEMORY_OK, YUPITER_MEMORY_INVALID_POINTER,
-YUPITER_MEMORY_OUT_OF_MEMORY and YUPITER_MEMORY_OVERFLOW.  The
-existing safe functions keep the status-134 policy described above.
+Allocation scans free blocks first-fit; release coalesces adjacent free
+blocks.  Realloc allocates, copies, frees.
