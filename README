@@ -1,116 +1,49 @@
 yupiter
 -------
 
-yupiter is a library for the C programming language.
+yupiter is a freestanding C library for Linux on aarch64 and x86_64.
+It provides its own entry point, system-call layer, formatted output
+and allocator, and links without a C library or C++ runtime.
 
-yupiter aims to be fast, customizable and safe, while maintaining
-performance and control close to the traditional GNU C library
-(glibc).
+The public interface is ISO C17 and usable from C and C++.  The
+implementation is ISO C++23, built freestanding.  Other operating
+systems and architectures are rejected at configure time.
 
-It is freestanding: it supplies its own entry point, its own formatted
-output and its own allocator, and links without a C runtime.  Its
-interface is ISO C17, usable from C and from C++; the implementation
-behind that interface is ISO C++23, built freestanding.  The targets
-are Linux on aarch64 and Linux on x86_64; any other operating system
-or architecture is rejected when the project is configured, rather
-than silently mapped onto an implementation that does not match it.
+Status: stable.  Current release 1.0.2; SOVERSION 1.  Exported symbols,
+signatures, C linkage and public structure layouts are stable within
+the 1.x series.
 
-Project Status
---------------
-
-yupiter is stable.  The current release is 1.0.2 (see NEWS); the
-shared object has SOVERSION 1.
-
-Within the 1.x series the exported symbols, their signatures, their C
-linkage and the public structure layouts do not change.  A change that
-breaks any of them requires a new major version.  New functions, new
-headers and new optional build features may be added in a minor
-release without breaking existing consumers.
 
 Build
 -----
-
-The build is a GNU Makefile driven by a POSIX configure script; no
-CMake, Python or generator is required on the build host.
 
     ./configure
     make
     make check
     make install
 
-"make install" refreshes the dynamic linker cache with ldconfig when
-the shared object is installed into the running system.  A staged
-installation with DESTDIR leaves the cache to the package manager.
+Builds libyupiter.a and libyupiter.so by default.  Run
+./configure --help for prefix, build type, heap size and library
+selection.  See docs/building.
 
-"make" builds both libyupiter.a and libyupiter.so by default.  The
-configure script detects Linux and the target architecture, checks
-that the compiler can build the freestanding C++23 implementation, and
-writes config.mk.  Run ./configure --help for the installation prefix,
-the build type, the heap size and the options that select the static
-library, the shared library and the tests.
-
-The static archive contains the startup file and is meant for a
-freestanding program linked with "-nostdlib".  The shared object
-contains no entry point and is meant for a hosted program that already
-has one.  Neither needs a C library or a C++ runtime.
-
-Repository Structure
---------------------
-assembly/     Freestanding entry point and system-call trampolines
-io/           Streams, formatting and the Linux system-call layer (C++23)
-mem/          The allocator (C++23)
-etc/          Templates of the package metadata
-include/      Public headers and internal headers
-docs/         Documentation
-test/         Tests in C, plus a C++ compatibility test
-mk/           Makefile modules
-build/        Generated build tree (not in the repository)
-python/       Python binding (PyO3/maturin), not part of the library build
 
 Documentation
--------------
+------------
 
-The docs/ directory documents the whole repository in plain text, in
-the style of this file.  Start with docs/README, which lists every
-document and the reading order for a first-time reader.
+docs/README lists every document and the reading order.
+
 
 License
 -------
 
-yupiter is multi-licensed.  You may use, copy, modify and distribute
-it under your choice of one of the following three licenses:
+Multi-licensed: GPLv2+, LGPLv2.1+ or Apache-2.0, at your choice.
+See LICENSE and LICENSES/.
 
-* GNU General Public License, version 2 or any later version (GPLv2+)
-* GNU Lesser General Public License, version 2.1 or any later
-  version (LGPLv2+)
-* Apache License, Version 2.0 (Apache-2.0)
-
-The LGPLv2+ option lets you link yupiter into your own program,
-including a proprietary program, while keeping your program under
-your own license; the obligations of the LGPL apply to the library
-itself, not to the programs that use it.
-
-The Apache-2.0 option is the right choice when your project must
-link statically, for example because shared objects or DLLs are not
-an option in your environment: it imposes no conditions on linking
-at all, and grants an explicit patent license.
-
-See the file LICENSE and the LICENSES/ directory for the full
-texts and the documentation of the licensing scheme.
 
 Contributing
 ------------
 
-Contributions, bug reports, and suggestions are welcome.
-
-The public interface is stable, so a contribution that changes an
-exported symbol, its signature, its C linkage, a public structure
-layout or the documented behavior needs a very good reason and a new
-major version.  Portability fixes, bug fixes and new tests are always
-welcome.
-
-Every change is built and tested on Linux for aarch64 and x86_64 by
-GitHub Actions, with GCC and Clang, in Debug, RelWithDebInfo and
-Release configurations, and with the static library, the shared
-library and both.  A change that cannot be tested on a supported
-target should say so explicitly.
+See CONTRIBUTING.md.  Bug reports and suggestions are welcome.
+Portability fixes, bug fixes and new tests are always welcome.  Changes
+to exported symbols, signatures, layouts or documented behavior need
+a new major version.
