@@ -1,67 +1,37 @@
 yupiter documentation
 =====================
 
-Every document in this directory is plain text, in the style of the
-top-level README, and describes one aspect of the repository.  Begin
-with "repository", which maps the whole tree, then read whichever part
-you need.
+Plain text, one file per topic.  Start with repository, then building
+and testing.
 
 
 Documents
 ---------
 
-repository
-    Every top-level file and directory, what it contains, and which
-    document describes it in more detail.
-
-building
-    How to configure, build, install and consume the library, what the
-    build options do, why the compiler flags differ between the
-    library and the tests, and what a port to another operating system
-    or architecture has to provide.
-
-testing
-    The test programs, how each kind of test is verified, how to
-    regenerate a golden file, and the rules a new test has to follow.
-
-formatting
-    The formatting engine behind yupiter_printf: the dialect it
-    implements, how one call flows through the code, and where it
-    refuses to produce output.
-
-io
-    Streams and their staging buffer, the operating-system layer with
-    its system-call numbers, and the assembly files that talk to the
-    kernel.
-
-heap
-    The dynamic memory allocator: the arena, the block layout, the
-    allocation and release algorithms, the safe variants and their
-    failure modes, and the accounting the tests rely on.
-
-python-binding
-    Python binding of the public C17 interface, built with PyO3
-    and maturin, linking against libyupiter.so.
+repository     Map of the tree and what each entry is for.
+building       Configure, build, install, consume; flags and porting.
+testing        Test programs, verification kinds, golden files, rules.
+formatting     The printf engine: dialect, flow, format checking.
+io             Streams, staging buffer, syscalls, assembly.
+heap           Allocator: arena, layout, algorithms, safe variants.
+python-binding PyO3/maturin binding against libyupiter.so.
+style          Documentation style rules.
 
 
-Reading order for a first-time reader
--------------------------------------
+Reading order
+-------------
 
-    repository -> building -> testing
+repository -> building -> testing
 
-and then, depending on the task:
+Then, by task:
 
-    formatting or heap -> io -> building
+formatting or heap -> io -> building
 
 
-Conventions used in these documents
------------------------------------
+Conventions
+-----------
 
-  * Commands are run from the repository root unless stated
-    otherwise.
-  * The public interface and the C test programs are ISO C17, and the
-    library implementation behind that interface is ISO C++23; assembly
-    is GNU assembler (GAS) syntax.
-  * A document never overrides AGENTS.md or the public comments in
-    "<yupiter.h>".  When they disagree, the header is the contract:
-    fix the document.
+Commands run from the repository root unless stated otherwise.
+Public interface and C tests are ISO C17; implementation is ISO C++23;
+assembly is GAS.  The header is the contract: if a document disagrees
+with include/yupiter.h, fix the document.
