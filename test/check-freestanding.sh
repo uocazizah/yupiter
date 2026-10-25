@@ -231,10 +231,12 @@ then
         esac
 
         case "$name" in
-            yupiter_printf|yupiter_fprintf|yupiter_malloc|yupiter_free|\
-            yupiter_malloc_safe|yupiter_free_safe|yupiter_realloc|\
-            yupiter_realloc_safe|yupiter_free_checked|yupiter_realloc_checked|\
-            yupiter_stdout|yupiter_stderr|\
+            yupiter_printf|yupiter_fprintf|yupiter_getchar|yupiter_fgetc|\
+            yupiter_fgets|yupiter_fread|yupiter_ungetc|yupiter_feof|\
+            yupiter_ferror|yupiter_clearerr|yupiter_fflush|yupiter_malloc|\
+            yupiter_free|yupiter_malloc_safe|yupiter_free_safe|\
+            yupiter_realloc|yupiter_realloc_safe|yupiter_free_checked|\
+            yupiter_realloc_checked|yupiter_stdout|yupiter_stderr|\
             yupiter_stdin)
                 ;;
             *)
