@@ -1,107 +1,43 @@
 python binding for yupiter
 ==========================
 
-A PyO3 binding of the public C17 interface of yupiter to Python.
-The binding is not part of the library build; it lives in python/
-and is built with maturin.  It links against the shared object that
-"make" produces in build/ and exposes output and allocation functions
-from include/yupiter.h.
+A PyO3 binding of the public C17 interface.  Not part of the library
+build; lives in python/ and is built with maturin.  Links against
+libyupiter.so.  Same three licenses as the library.
 
-The binding is distributed under the same three licenses as the
-library: GPL-2.0-or-later, LGPL-2.1-or-later or Apache-2.0, at your
-option.  See LICENSE and LICENSES/ in the repository root.
 
 Requirements
 ------------
 
-  * Rust 1.83 or newer.
-  * Python 3.12 or newer.
-  * A C++23 compiler and the yupiter build requirements; python/build.rs
-    runs "make" in the repository root.
-  * patchelf, for the wheel packaging step.
+Python 3.12+, Rust toolchain, maturin, patchelf.
+
 
 Build
 -----
 
-    cd python
-    maturin build --release
+    ./configure --enable-tests=no
+    make
+    cd python && maturin build --release --out dist
+    pip install python/dist/yupiter-*.whl
 
-The wheel is written to python/target/wheels/.  Install it with:
+For iterative development use maturin develop.
 
-    pip install python/target/wheels/yupiter-*.whl
-
-For iterative development:
-
-    maturin develop --release
-
-Structure
----------
-
-    python/Cargo.toml         Rust crate manifest; abi3-py312.
-    python/pyproject.toml     maturin build system configuration.
-    python/build.rs           Builds yupiter and links libyupiter.so.
-    python/src/lib.rs         The binding: FFI declarations and the
-                              #[pymodule] definition.
-    python/yupiter_py/        Python package init that re-exports the
-                              extension module under a package name.
 
 Exposed symbols
 ---------------
 
-Output:
-    yupiter_printf(format) -> int | None
-    yupiter_fprintf(stream, format) -> int | None
+Output: printf, fprintf.
+Memory: malloc, free, realloc.
+Safe memory: malloc_safe, free_safe, realloc_safe, plus checked
+variants.
+Constants: YUPITER_HEAP_SIZE-related values as exposed.
 
-Memory:
-    yupiter_malloc(size) -> int | None
-    yupiter_free(ptr)
-    yupiter_realloc(ptr, size) -> int | None
-
-Safe memory:
-    yupiter_malloc_safe(count, size) -> int
-    yupiter_free_safe(ptr)
-    yupiter_realloc_safe(ptr, count, size) -> int
-
-Constants:
-    yupiter.STDOUT, yupiter.STDERR, yupiter.STDIN
 
 Design notes
 ------------
 
-The binding links against libyupiter.so (dylib), not libyupiter.a.
-The static archive contains the freestanding startup file, which
-defines _start and conflicts with the Python interpreter's entry
-point.  The shared object excludes it.
-
-The FFI declarations use link_name to reference the C symbols
-(yupiter_printf, etc.) while the Rust functions are named the same.
-This avoids the duplicate-name error that would otherwise arise.
-
-The Python safe allocator variants use non-terminating native operations.
-They raise OverflowError for size overflow, MemoryError for exhaustion,
-and ValueError for invalid, freed or corrupt pointers.  Zero-size
-allocation returns 0; zero-size resize releases the block and returns 0.
-New allocations are zero-filled; growth preserves existing bytes and
-leaves additional bytes uninitialised.  Native C safe functions keep
-terminating with status 134 on failure, so a Python caller should use
-the wrappers above rather than the terminating interface.
-
-printf and fprintf accept a pre-formatted string.  The variadic C
-function cannot be bound directly by the PyO3 macro, so formatting
-is done in Python before the call.  Both wrappers pass a constant
-"%s" native format, so percent directives in the text print literally.
-
-Pointer arguments and return values are passed as integers.  This
-matches the freestanding design, which does not expose the layout
-of yupiter_FILE.
-
-Test
-----
-
-    python test/test_python_binding.py
-
-See also
---------
-
-    docs/repository
-    docs/building
+Links against libyupiter.so, not the static archive: the archive
+contains _start, which conflicts with the interpreter.  FFI uses
+link_name for the C symbols.  Safe variants raise OverflowError,
+MemoryError or ValueError; native safe functions terminate with 134.><|start|><|start|>assistant<|channel|>analysis<|message|>Now create governance files. SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md. Use Markdown. Need content. Let's write.<|end|><|start|>start to=write<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="path">
+/home/aufa/libstdoc/SECURITY.md
