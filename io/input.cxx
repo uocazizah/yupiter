@@ -14,17 +14,17 @@
 namespace yupiter::io
 {
 
-extern "C" int yupiter_getchar(void)
+extern "C" YUPITER_PUBLIC int yupiter_getchar(void)
 {
     return yupiter_fgetc(yupiter_stdin);
 }
 
-extern "C" int yupiter_fgetc(yupiter_FILE *stream)
+extern "C" YUPITER_PUBLIC int yupiter_fgetc(yupiter_FILE *stream)
 {
     return yupiter_stream_getc(stream);
 }
 
-extern "C" char *yupiter_fgets(char *s, int n, yupiter_FILE *stream)
+extern "C" YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stream)
 {
     int   index;
     int   value;
@@ -62,7 +62,7 @@ extern "C" char *yupiter_fgets(char *s, int n, yupiter_FILE *stream)
     return s;
 }
 
-extern "C" std::size_t yupiter_fread(void *ptr, std::size_t size,
+extern "C" YUPITER_PUBLIC std::size_t yupiter_fread(void *ptr, std::size_t size,
                                     std::size_t nmemb, yupiter_FILE *stream)
 {
     std::size_t total;
@@ -100,12 +100,12 @@ extern "C" std::size_t yupiter_fread(void *ptr, std::size_t size,
     return produced / size;
 }
 
-extern "C" int yupiter_ungetc(int c, yupiter_FILE *stream)
+extern "C" YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_FILE *stream)
 {
     return yupiter_stream_ungetc(stream, c);
 }
 
-extern "C" int yupiter_feof(yupiter_FILE *stream)
+extern "C" YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream)
 {
     if (stream == nullptr)
     {
@@ -115,7 +115,7 @@ extern "C" int yupiter_feof(yupiter_FILE *stream)
     return stream->eof;
 }
 
-extern "C" int yupiter_ferror(yupiter_FILE *stream)
+extern "C" YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream)
 {
     if (stream == nullptr)
     {
@@ -125,7 +125,7 @@ extern "C" int yupiter_ferror(yupiter_FILE *stream)
     return stream->error;
 }
 
-extern "C" void yupiter_clearerr(yupiter_FILE *stream)
+extern "C" YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream)
 {
     if (stream == nullptr)
     {
@@ -137,7 +137,7 @@ extern "C" void yupiter_clearerr(yupiter_FILE *stream)
     stream->has_pushback = 0;
 }
 
-extern "C" int yupiter_fflush(yupiter_FILE *stream)
+extern "C" YUPITER_PUBLIC int yupiter_fflush(yupiter_FILE *stream)
 {
     return yupiter_stream_flush(stream);
 }
