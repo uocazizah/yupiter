@@ -18,7 +18,7 @@
 # read - so a check that would only make sense for one target has
 # nothing to find either way.
 #
-# The implementation is C++23 and the tests are C17, so the two groups
+# The implementation is C17 and the tests are C17, so the two groups
 # are parsed with the standard each is written in; parsing the C++
 # sources as C17 would report every namespace and every scoped
 # enumeration, and parsing the C tests as C++ would report the
@@ -112,7 +112,7 @@ jobs:
       # "--warnings-as-errors" is what turns a finding into a failure;
       # without it clang-tidy reports and exits zero.
       #
-      # The C++ sources are parsed as C++23 with the include directory
+      # The C++ sources are parsed as C17 with the include directory
       # the build gives them; the C sources - the tests - are parsed as
       # C17 with the same directory, because the tests include the
       # internal headers by name.
