@@ -31,19 +31,17 @@
  * if not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdarg>
+#include <stdarg.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
-namespace yupiter::io
-{
 
-extern "C" YUPITER_PUBLIC int yupiter_printf(const char *format, ...)
+YUPITER_PUBLIC int yupiter_printf(const char *format, ...)
 {
     va_list args;
     int     count;
 
-    if (format == nullptr)
+    if (format == NULL)
     {
         return -1;
     }
@@ -73,4 +71,3 @@ extern "C" YUPITER_PUBLIC int yupiter_printf(const char *format, ...)
     return count;
 }
 
-} /* namespace yupiter::io */
