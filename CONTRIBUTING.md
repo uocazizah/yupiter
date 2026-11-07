@@ -14,7 +14,7 @@ Contributions, bug reports and suggestions are welcome.
 ```sh
 ./configure
 make
-make check
+make test
 ```
 
 Tests run on Linux for aarch64 and x86_64 via GitHub Actions with GCC
