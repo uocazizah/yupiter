@@ -3,7 +3,7 @@
 #include <stddef.h>
 
 #include "yupiter.h"
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
 static int failures;
 
