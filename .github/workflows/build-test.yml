@@ -190,9 +190,9 @@ jobs:
 
       - name: Test
         if: matrix.tests == 'yes'
-        run: make check
+        run: make test
 
-      # The shared-only rows cannot run "make check", because the test
+      # The shared-only rows cannot run "make test", because the test
       # programs link the static archive.  What matters there is that
       # the object exists, carries the SONAME the install rules promise
       # and exports the public interface.
