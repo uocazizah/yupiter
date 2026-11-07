@@ -54,16 +54,12 @@
  * declares, so the C tests can call them under their unmangled names.
  */
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
-namespace yupiter::io
-{
 
-namespace
-{
 
 /*
  * Linux system-call numbers for the target architecture.
@@ -76,15 +72,15 @@ namespace
  * other one.
  */
 #if defined(__aarch64__)
-constexpr long syscall_close = 57L;
-constexpr long syscall_read = 63L;
-constexpr long syscall_write = 64L;
-constexpr long syscall_exit_group = 94L;
+static const long syscall_close = 57L;
+static const long syscall_read = 63L;
+static const long syscall_write = 64L;
+static const long syscall_exit_group = 94L;
 #elif defined(__x86_64__)
-constexpr long syscall_close = 3L;
-constexpr long syscall_read = 0L;
-constexpr long syscall_write = 1L;
-constexpr long syscall_exit_group = 231L;
+static const long syscall_close = 3L;
+static const long syscall_read = 0L;
+static const long syscall_write = 1L;
+static const long syscall_exit_group = 231L;
 #else
 #error "yupiter: no Linux system-call numbers for this architecture"
 #endif
@@ -99,7 +95,7 @@ constexpr long syscall_exit_group = 231L;
  * buffer is one number as ordinary as a write of four bytes - which
  * is what lets a single comparison classify both.
  */
-constexpr long kernel_error_floor = -4095L;
+static const long kernel_error_floor = -4095L;
 
 /*
  * Translate a raw kernel result into the 0 / -1 convention, optionally
@@ -118,26 +114,25 @@ constexpr long kernel_error_floor = -4095L;
  * comparison is done on the unsigned representation so that it is well
  * defined for every long value, including negative ones.
  */
-int yupiter_kernel_result(long result, std::size_t *p_count)
+static int yupiter_kernel_result(long result, size_t *p_count)
 {
     unsigned long magnitude;
 
-    magnitude = static_cast<unsigned long>(result);
+    magnitude = (unsigned long)(result);
 
-    if (magnitude >= static_cast<unsigned long>(kernel_error_floor))
+    if (magnitude >= (unsigned long)(kernel_error_floor))
     {
         return -1;
     }
 
-    if (p_count != nullptr)
+    if (p_count != NULL)
     {
-        *p_count = static_cast<std::size_t>(result);
+        *p_count = (size_t)(result);
     }
 
     return 0;
 }
 
-} /* namespace */
 
 /*
  * Write "length" bytes, repeating the system call for whatever the
@@ -152,33 +147,33 @@ int yupiter_kernel_result(long result, std::size_t *p_count)
  * as a failure instead of being retried: it would otherwise repeat
  * forever without the write ever making progress.
  */
-extern "C" int yupiter_sys_write(int fd, const void *p_buffer,
-                               std::size_t length)
+int yupiter_sys_write(int fd, const void *p_buffer,
+                               size_t length)
 {
     const unsigned char *p_bytes;
-    std::size_t          offset;
-    std::size_t          remaining;
+    size_t          offset;
+    size_t          remaining;
 
-    if ((p_buffer == nullptr) && (length != 0))
+    if ((p_buffer == NULL) && (length != 0))
     {
         return -1;
     }
 
-    p_bytes = static_cast<const unsigned char *>(p_buffer);
+    p_bytes = (const unsigned char *)(p_buffer);
     offset = 0;
     remaining = length;
 
     while (remaining > 0)
     {
-        std::size_t    written;
-        std::uintptr_t address;
+        size_t    written;
+        uintptr_t address;
 
-        address = reinterpret_cast<std::uintptr_t>(p_bytes + offset);
+        address = (uintptr_t)(p_bytes + offset);
 
         if (yupiter_kernel_result(
-                yupiter_syscall3(syscall_write, static_cast<long>(fd),
-                               static_cast<long>(address),
-                               static_cast<long>(remaining)),
+                yupiter_syscall3(syscall_write, (long)(fd),
+                               (long)(address),
+                               (long)(remaining)),
                 &written) != 0)
         {
             return -1;
@@ -214,34 +209,34 @@ extern "C" int yupiter_sys_write(int fd, const void *p_buffer,
  * this interface until the input layer needs it, rather than being
  * exposed now for a caller that does not exist.
  */
-extern "C" int yupiter_sys_read(int fd, void *p_buffer, std::size_t length,
-                               std::size_t *p_count)
+int yupiter_sys_read(int fd, void *p_buffer, size_t length,
+                               size_t *p_count)
 {
     long result;
 
-    if ((p_buffer == nullptr) && (length != 0))
+    if ((p_buffer == NULL) && (length != 0))
     {
         return -1;
     }
 
     result = yupiter_syscall3(
-        syscall_read, static_cast<long>(fd),
-        static_cast<long>(reinterpret_cast<std::uintptr_t>(p_buffer)),
-        static_cast<long>(length));
+        syscall_read, (long)(fd),
+        (long)((uintptr_t)(p_buffer)),
+        (long)(length));
 
     return yupiter_kernel_result(result, p_count);
 }
 
-extern "C" int yupiter_sys_close(int fd)
+int yupiter_sys_close(int fd)
 {
     long result;
 
-    result = yupiter_syscall3(syscall_close, static_cast<long>(fd), 0L, 0L);
+    result = yupiter_syscall3(syscall_close, (long)(fd), 0L, 0L);
 
-    return yupiter_kernel_result(result, nullptr);
+    return yupiter_kernel_result(result, NULL);
 }
 
-extern "C" void yupiter_sys_exit(int status)
+void yupiter_sys_exit(int status)
 {
     /*
      * exit_group is used rather than exit so that every thread of the
@@ -256,10 +251,9 @@ extern "C" void yupiter_sys_exit(int status)
      */
     for (;;)
     {
-        static_cast<void>(
-            yupiter_syscall3(syscall_exit_group, static_cast<long>(status),
+        (void)(
+            yupiter_syscall3(syscall_exit_group, (long)(status),
                            0L, 0L));
     }
 }
 
-} /* namespace yupiter::io */
