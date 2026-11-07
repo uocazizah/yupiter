@@ -316,7 +316,7 @@ then
          "${target_arch}; pass a cross compiler with --cc and --cxx"
 fi
 
-# The implementation is ISO C++23 and freestanding, so the toolchain
+# The implementation is ISO C17 and freestanding, so the toolchain
 # has to provide the freestanding standard-library headers the code
 # includes.  The probe is compiled with the same runtime flags as the
 # library; a compiler that cannot compile it would otherwise fail much
@@ -325,43 +325,39 @@ probe_dir=$(mktemp -d)
 
 trap 'rm -rf "${probe_dir}"' EXIT INT TERM
 
-cat > "${probe_dir}/probe.cxx" <<'EOF'
-#include <climits>
-#include <cstdarg>
-#include <cstddef>
-#include <cstdint>
+cat > "${probe_dir}/probe.c" <<'EOF'
+#include <limits.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
 
-constexpr std::size_t probe_alignment = alignof(std::max_align_t);
-constinit std::uintptr_t probe_pointer = 0;
-static_assert(INT_MAX > 0);
+static const size_t probe_alignment = _Alignof(max_align_t);
+static uintptr_t probe_pointer = 0;
+_Static_assert(INT_MAX > 0, "int must be positive");
 
-extern "C" int probe(const char *format, ...);
-
-extern "C" int probe(const char *format, ...)
+int probe(const char *format, ...)
 {
     va_list args;
 
     va_start(args, format);
     va_end(args);
 
-    return static_cast<int>(probe_pointer + probe_alignment) +
-           ((format != nullptr) ? 1 : 0);
+    return (int)(probe_pointer + probe_alignment) +
+           ((format != NULL) ? 1 : 0);
 }
 EOF
 
-if ! "${cxx}" -std=c++23 -ffreestanding -fno-builtin -fno-stack-protector \
-        -fno-exceptions -fno-rtti -fno-threadsafe-statics \
-        -c "${probe_dir}/probe.cxx" -o "${probe_dir}/probe.o" \
+if ! "${cc}" -std=c17 -ffreestanding -fno-builtin -fno-stack-protector \
+        -c "${probe_dir}/probe.c" -o "${probe_dir}/probe.o" \
         > "${probe_dir}/probe.log" 2>&1
 then
-    echo "configure: the C++ compiler \"${cxx}\" cannot build the"
-    echo "freestanding C++23 implementation:"
+    echo "configure: the C compiler \"${cc}\" cannot build the"
+    echo "freestanding C17 implementation:"
     echo
     cat "${probe_dir}/probe.log"
     echo
-    echo "The implementation needs <climits>, <cstdarg>, <cstddef> and"
-    echo "<cstdint> under -ffreestanding -fno-exceptions -fno-rtti;"
-    echo "libstdc++ provides them from GCC 13 on."
+    echo "The implementation needs <limits.h>, <stdarg.h>, <stddef.h> and"
+    echo "<stdint.h> under -ffreestanding."
     exit 1
 fi
 
@@ -433,5 +429,5 @@ echo "  tests           ${build_tests}"
 echo "  heap arena      ${heap_size} bytes"
 echo "  prefix          ${prefix}"
 echo
-echo "Run \"make\" to build, \"make check\" to test and \"make install\""
+echo "Run \"make\" to build, \"make test\" to test and \"make install\""
 echo "to install."
