@@ -8,20 +8,30 @@
 
 BUILD_DIR ?= build
 
+# Quiet by default: print short progress lines.  Set VERBOSE=1 to print
+# the full compiler and linker commands.
+ifeq ($(VERBOSE),1)
+Q :=
+ECHO := @:
+else
+Q := @
+ECHO := @echo
+endif
+
 OBJDIR  := $(BUILD_DIR)/obj
 TESTDIR := $(BUILD_DIR)/test
 
 # Sources.
-IO_SOURCES  := io/file.cxx io/fprintf.cxx io/input.cxx io/printf.cxx \
-               io/string.cxx io/syscall_linux.cxx io/vfprintf.cxx
-MEM_SOURCES := mem/heap.cxx
+IO_SOURCES  := io/file.c io/fprintf.c io/input.c io/printf.c \
+               io/string.c io/syscall_linux.c io/vfprintf.c
+MEM_SOURCES := mem/heap.c
 LIB_SOURCES := $(IO_SOURCES) $(MEM_SOURCES)
 
 START_SOURCE    := assembly/yupiter_start_$(TARGET_ARCH).S
 SYSCALL_SOURCES := assembly/yupiter_syscall_$(TARGET_ARCH).S \
                    assembly/yupiter_syscall3_$(TARGET_ARCH).S
 
-LIB_OBJECTS     := $(LIB_SOURCES:%.cxx=$(OBJDIR)/%.o)
+LIB_OBJECTS     := $(LIB_SOURCES:%.c=$(OBJDIR)/%.o)
 START_OBJECT    := $(START_SOURCE:%.S=$(OBJDIR)/%.o)
 SYSCALL_OBJECTS := $(SYSCALL_SOURCES:%.S=$(OBJDIR)/%.o)
 
@@ -54,10 +64,21 @@ WARNINGS_COMMON := \
     -Wundef \
     -Wswitch-default \
     -Wdouble-promotion \
-    -Wvla
-
-WARNINGS_C := $(WARNINGS_COMMON) -Wstrict-prototypes -Wmissing-prototypes
-
+    -Wvla \
+    -Wformat=2 \
+    -Wformat-security \
+    -Wnull-dereference \
+    -Winit-self \
+    -Wuninitialized \
+    -Wstrict-aliasing=2 \
+    -Wstrict-overflow=2 \
+    -Wpointer-arith \
+    -Wcast-align \
+    -Wwrite-strings \
+    -Wredundant-decls \
+    -Wmissing-declarations \
+    -Wmissing-include-dirs
+WARNINGS_C := $(WARNINGS_COMMON) -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs -Wjump-misses-init
 WARNINGS_CXX := $(WARNINGS_COMMON) \
     -Wold-style-cast \
     -Wnon-virtual-dtor \
@@ -71,19 +92,16 @@ OPTIONS_relwithdebinfo := -O2 -g -DNDEBUG
 OPTIONS_minsize       := -Os -DNDEBUG
 OPTIONS               := $(OPTIONS_$(BUILD_TYPE))
 
-# The library is freestanding C++23.  "-fPIC" is used for the objects
+# The library is freestanding C17.  "-fPIC" is used for the objects
 # of both libraries so that a static archive can also be linked into a
 # position-independent executable, which matters on aarch64.
 LIB_RUNTIME_FLAGS := \
     -ffreestanding \
     -fno-builtin \
-    -fno-stack-protector \
-    -fno-exceptions \
-    -fno-rtti \
-    -fno-threadsafe-statics
+    -fno-stack-protector
 
 LIB_CPPFLAGS := -Iinclude -DYUPITER_HEAP_SIZE=$(HEAP_SIZE)
-LIB_CXXFLAGS := -std=c++23 $(WARNINGS_CXX) $(OPTIONS) \
+LIB_CFLAGS := -std=c17 $(WARNINGS_C) $(OPTIONS) \
                 $(LIB_RUNTIME_FLAGS) -fPIC -fvisibility=hidden
 LIB_ASFLAGS  := $(OPTIONS)
 
@@ -94,13 +112,12 @@ LIB_ASFLAGS  := $(OPTIONS)
 # implicit "return 0" of a main that runs off the end.
 TEST_CPPFLAGS := -Iinclude -DYUPITER_HEAP_SIZE=$(HEAP_SIZE)
 TEST_CFLAGS   := -std=c17 $(WARNINGS_C) $(OPTIONS) \
-                 -fno-builtin -fno-stack-protector
+                 -fno-builtin -fno-stack-protector -Wno-format -Wno-format-security -Wno-format-nonliteral
 TEST_CXXFLAGS := -std=c++17 $(WARNINGS_CXX) $(OPTIONS) \
                  -fno-builtin -fno-stack-protector
 TEST_LDFLAGS  := -nostdlib -static
-
 TEST_HEADERS := include/yupiter.h include/yupiter.hpp \
-                include/yupiter_io.hxx include/yupiter_mem.hxx
+                include/yupiter_io.h include/yupiter_mem.h
 
 FREESTANDING_TESTS := test_index test_format test_differential test_errors \
                       test_stream test_largewrite test_shortwrite test_string \
