@@ -43,7 +43,7 @@
  * prove that no allocation is left behind.
  *
  * The declarations are wrapped in an "extern "C"" specification so
- * that the C++23 implementation defines them with the same linkage the
+ * that the C17 implementation defines them with the same linkage the
  * declarations promise, and the header itself is kept ISO C17 so that
  * the C test programs can include it too: the heap tests use the
  * accounting below to prove that every allocation was released.
@@ -52,7 +52,7 @@
 #include <stddef.h>
 
 #ifdef __cplusplus
-extern "C" {
+{
 #endif
 
 /*
@@ -87,7 +87,7 @@ size_t yupiter_heap_live_blocks(void);
 size_t yupiter_heap_capacity(void);
 
 #ifdef __cplusplus
-} /* extern "C" */
+} /* */
 #endif
 
 #endif /* YUPITER_MEM_H */
