@@ -29,7 +29,8 @@ Regenerate from the host C library, never from yupiter:
     /tmp/reference-format > /tmp/expected-format.txt
     diff -u test/expected-format.txt /tmp/expected-format.txt
 
-See the golden-files job in .github/workflows/build-test.yml.
+See the golden-files job in .github/workflows/x86_64-linux-gnu-gcc.yml
+or .github/workflows/aarch64-linux-gnu-gcc.yml.
 
 
 Adding a test
