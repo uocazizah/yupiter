@@ -6,7 +6,7 @@ It provides its own entry point, system-call layer, formatted output
 and allocator, and links without a C library or C++ runtime.
 
 The public interface is ISO C17 and usable from C and C++.  The
-implementation is ISO C++23, built freestanding.  Other operating
+implementation is ISO C17, built freestanding.  Other operating
 systems and architectures are rejected at configure time.
 
 Status: stable.  Current release 1.0.2; SOVERSION 1.  Exported symbols,
@@ -19,7 +19,7 @@ Build
 
     ./configure
     make
-    make check
+    make test
     make install
 
 Builds libyupiter.a and libyupiter.so by default.  Run
