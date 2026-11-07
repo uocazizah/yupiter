@@ -3,7 +3,7 @@ streams, system calls and assembly
 
 Covers io/file.cxx, io/syscall_linux.cxx, io/string.cxx and assembly/.
 Everything here knows the OS or the architecture; the rest is portable
-C++23.  All public functions use C linkage; internal helpers are in
+C17.  All public functions use C linkage; internal helpers are in
 an anonymous namespace.
 
 
