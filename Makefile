@@ -7,7 +7,7 @@
 #
 #     ./configure
 #     make
-#     make check
+#     make test
 #     make install
 #
 # The build is a plain GNU Makefile on purpose: the project is small,
@@ -37,7 +37,8 @@ include mk/install.mk
 all: $(ALL_TARGETS)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	$(ECHO) "  CLEAN"
+	$(Q)rm -rf $(BUILD_DIR)
 
 distclean: clean
 	rm -f config.mk
@@ -54,7 +55,7 @@ help:
 	@echo "  all          build the configured libraries (default)"
 	@echo "  static       build libyupiter.a"
 	@echo "  shared       build libyupiter.so"
-	@echo "  check        build and run the test suite"
+	@echo "  test         build and run the test suite"
 	@echo "  python       build the Python binding wheel"
 	@echo "  python-check build and run the Python binding tests"
 	@echo "  install      install headers, libraries and package metadata"
