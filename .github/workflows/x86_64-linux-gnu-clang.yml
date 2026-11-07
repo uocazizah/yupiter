@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
+name: x86_64-linux-gnu clang build and test
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: x86_64 clang relwithdebinfo (static+shared)
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: |
+          ./configure \
+              --cc="clang" \
+              --cxx="clang++" \
+              --build-type="relwithdebinfo" \
+              --heap-size="4096" \
+              --enable-static="yes" \
+              --enable-shared="yes" \
+              --enable-tests="yes"
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Test
+        run: make test
