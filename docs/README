@@ -32,6 +32,6 @@ Conventions
 -----------
 
 Commands run from the repository root unless stated otherwise.
-Public interface and C tests are ISO C17; implementation is ISO C++23;
+Public interface and C tests are ISO C17; implementation is ISO C17;
 assembly is GAS.  The header is the contract: if a document disagrees
 with include/yupiter.h, fix the document.
