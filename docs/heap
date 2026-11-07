@@ -25,7 +25,7 @@ The authoritative contract is the comments in include/yupiter.h.
 Sizing
 ------
 
-YUPITER_HEAP_SIZE is defined in include/yupiter_mem.hxx, default 4096.
+YUPITER_HEAP_SIZE is defined in include/yupiter_mem.h, default 4096.
 Must be a plain decimal number, at least 64.  Static assertions reject
 invalid values.  Tests query yupiter_heap_capacity and shape scenarios
 to fit.
