@@ -36,7 +36,7 @@
  * fill.
  *
  * The null and zero-length cases are part of the contract in
- * include/yupiter_io.hxx.  They are checked here rather than left to the
+ * include/yupiter_io.h.  They are checked here rather than left to the
  * callers, because a helper whose safety depends on every caller
  * remembering a guard is one edit away from a null dereference.  The
  * program carries its own verdict in its exit status.
@@ -44,7 +44,7 @@
 
 #include <stddef.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
 static int failures;
 
