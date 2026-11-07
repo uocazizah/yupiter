@@ -35,7 +35,7 @@
  * The heap, exercised with small allocations only.
  *
  * The arena is 4096 bytes by default, so anything this test leaks
- * stays a few kilobytes at most, and the accounting in yupiter_mem.hxx
+ * stays a few kilobytes at most, and the accounting in yupiter_mem.h
  * turns any leak into a failing check: after every scenario the live
  * byte and block counts must be back at zero.  The exhaustion scenario
  * deliberately fills the arena to prove that a full heap behaves -
@@ -49,8 +49,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "yupiter_io.hxx"
-#include "yupiter_mem.hxx"
+#include "yupiter_io.h"
+#include "yupiter_mem.h"
 
 static int failures;
 
