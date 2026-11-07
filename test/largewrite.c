@@ -61,7 +61,7 @@
 
 #include <stddef.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
 #define PAYLOAD_SIZE 200000
 
