@@ -1,0 +1,128 @@
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
+name: aarch64-linux-gnu gcc build and test
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: aarch64 gcc ${{ matrix.build_type }} (${{ matrix.libraries }})
+    runs-on: ubuntu-26.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build_type: relwithdebinfo
+            heap_size: 4096
+            static: "yes"
+            shared: "yes"
+            tests: "yes"
+            libraries: static+shared
+          - build_type: debug
+            heap_size: 64
+            static: "yes"
+            shared: "yes"
+            tests: "yes"
+            libraries: static+shared
+          - build_type: relwithdebinfo
+            heap_size: 4096
+            static: "no"
+            shared: "yes"
+            tests: "no"
+            libraries: shared
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: |
+          ./configure \
+              --cc="gcc" \
+              --cxx="g++" \
+              --build-type="${{ matrix.build_type }}" \
+              --heap-size="${{ matrix.heap_size }}" \
+              --enable-static="${{ matrix.static }}" \
+              --enable-shared="${{ matrix.shared }}" \
+              --enable-tests="${{ matrix.tests }}"
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Test
+        if: matrix.tests == 'yes'
+        run: make test
+
+      - name: Inspect the shared-only build
+        if: matrix.tests == 'no'
+        run: |
+          version=$(sed -n 's/^VERSION[[:space:]]*:=[[:space:]]*//p' config.mk)
+          test -n "$version"
+          test -f "build/libyupiter.so.$version"
+          test -L build/libyupiter.so.1
+          test -L build/libyupiter.so
+          readelf -d "build/libyupiter.so.$version" |
+              grep -F 'SONAME' | grep -F 'libyupiter.so.1'
+          nm -D --defined-only "build/libyupiter.so.$version" |
+              grep -E ' T yupiter_(printf|fprintf|malloc|free|realloc)$'
+
+  golden-files:
+    name: golden files match the reference C library (aarch64)
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Regenerate the conversion golden file from the reference
+        run: |
+          cc -std=c17 -DYUPITER_REFERENCE -w test/format.c \
+              -o /tmp/reference-format
+          /tmp/reference-format > /tmp/expected-format.txt
+          diff -u test/expected-format.txt /tmp/expected-format.txt
+
+  python-binding:
+    name: python binding (aarch64)
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure and build yupiter
+        run: |
+          ./configure \
+              --cc=gcc \
+              --cxx=g++ \
+              --build-type=relwithdebinfo \
+              --heap-size=4096 \
+              --enable-static=yes \
+              --enable-shared=yes \
+              --enable-tests=no
+          make -j"$(nproc)"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install maturin
+        run: pip install maturin patchelf
+
+      - name: Build Python wheel
+        run: |
+          cd python
+          maturin build --release --out dist
+
+      - name: Install wheel
+        run: pip install python/dist/yupiter-*.whl --break-system-packages
+
+      - name: Run Python tests
+        run: python test/test_python_binding.py
