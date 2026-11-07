@@ -49,12 +49,12 @@
  * The public interface covers all of this except the discard, whose
  * effect a caller can only observe through a failed formatted call.
  * The internal header is included for that one function; see its
- * declaration in include/yupiter_io.hxx.
+ * declaration in include/yupiter_io.h.
  */
 
 #include <stddef.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
 /*
  * Longer than the staging buffer, and patterned so that a chunk which
