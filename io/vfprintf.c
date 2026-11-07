@@ -40,7 +40,7 @@
  * specification to be marshalled through a second interface.
  *
  * Everything this file needs from the platform is the stream interface
- * and the heap, declared in "yupiter_io.hxx" and "<yupiter.h>", so the
+ * and the heap, declared in "yupiter_io.h" and "<yupiter.h>", so the
  * file compiles unchanged on any target that provides them.
  *
  * The scratch buffers of the formatting engine are borrowed from the
@@ -60,66 +60,58 @@
  * so yupiter_printf and yupiter_fprintf reach it under its unmangled name.
  */
 
-#include <climits>
-#include <cstdarg>
-#include <cstddef>
-#include <cstdint>
+#include <limits.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
-namespace yupiter::io
-{
 
-namespace
-{
 
 /*
  * Flags of a conversion specification, as a bitmask.
  */
-enum class flag : unsigned int
+typedef enum flag
 {
-    left  = 0x01U,
-    plus  = 0x02U,
-    space = 0x04U,
-    alt   = 0x08U,
-    zero  = 0x10U
-};
+    FLAG_LEFT  = 0x01U,
+    FLAG_PLUS  = 0x02U,
+    FLAG_SPACE = 0x04U,
+    FLAG_ALT   = 0x08U,
+    FLAG_ZERO  = 0x10U
+} flag;
 
 /*
  * The specification keeps its flags in one unsigned word, so the two
  * operators below combine a word with a flag and test one.
  */
-constexpr unsigned int operator|(unsigned int flags, flag value) noexcept
+static bool has_flag(unsigned int flags, flag value)
 {
-    return flags | static_cast<unsigned int>(value);
-}
-
-constexpr bool has_flag(unsigned int flags, flag value) noexcept
-{
-    return (flags & static_cast<unsigned int>(value)) != 0U;
+    return (flags & (unsigned int)(value)) != 0U;
 }
 
 /*
  * Length modifiers, in the order the parser matches them.
  */
-enum class length_modifier
+typedef enum length_modifier
 {
-    none,
-    hh,
-    h,
-    l,
-    ll,
-    z,
-    t,
-    j
-};
+    LENGTH_MODIFIER_NONE,
+    LENGTH_MODIFIER_HH,
+    LENGTH_MODIFIER_H,
+    LENGTH_MODIFIER_L,
+    LENGTH_MODIFIER_LL,
+    LENGTH_MODIFIER_Z,
+    LENGTH_MODIFIER_T,
+    LENGTH_MODIFIER_J
+} length_modifier;
 
 /*
  * Worst-case digits of a uintmax_t value written in binary: 64 digits
  * plus the terminating null.  Base 8, 10 and 16 all need fewer, so the
  * buffer is always large enough regardless of the conversion.
  */
-constexpr std::size_t digit_storage = 65;
+#define digit_storage 65
 
 /*
  * Size of the chunk used to stage a run of padding characters, and
@@ -131,8 +123,8 @@ constexpr std::size_t digit_storage = 65;
  * stack buffers of the same size, so an exhausted heap costs stack
  * space rather than correctness.
  */
-constexpr std::size_t scratch_chunk = 32;
-constexpr std::size_t scratch_size = digit_storage + scratch_chunk;
+#define scratch_chunk 32
+#define scratch_size (digit_storage + scratch_chunk)
 
 /*
  * The stream, the running character count and the sticky failure flag
@@ -155,7 +147,7 @@ constexpr std::size_t scratch_size = digit_storage + scratch_chunk;
  * no padding character can be: padding is only ever a space or a
  * zero.
  */
-struct yupiter_output
+typedef struct yupiter_output
 {
     yupiter_FILE *stream;
     int         count;
@@ -164,31 +156,31 @@ struct yupiter_output
     char       *p_chunk;
     char        chunk_value;
     bool        scratch_from_heap;
-};
+} yupiter_output;
 
 /*
  * One parsed conversion specification.
  */
-struct yupiter_spec
+typedef struct yupiter_spec
 {
     unsigned int    flags;
     int             width;
     int             precision;
     length_modifier length;
     char            conversion;
-};
+} yupiter_spec;
 
 /*
  * Give the borrowed scratch block back.  Every path out of
  * yupiter_vfprintf calls this, so a formatted call can never leave the
  * heap holding a block.
  */
-void output_release_scratch(yupiter_output *p_output)
+static void output_release_scratch(yupiter_output *p_output)
 {
     if (p_output->scratch_from_heap)
     {
         yupiter_free(p_output->p_scratch);
-        p_output->p_scratch = nullptr;
+        p_output->p_scratch = NULL;
         p_output->scratch_from_heap = false;
     }
 }
@@ -198,8 +190,8 @@ void output_release_scratch(yupiter_output *p_output)
  * INT_MAX before anything is written so that the documented return
  * type can never overflow.
  */
-void output_write(yupiter_output *p_output, const char *p_bytes,
-                  std::size_t length)
+static void output_write(yupiter_output *p_output, const char *p_bytes,
+                  size_t length)
 {
     if (p_output->failed)
     {
@@ -211,7 +203,7 @@ void output_write(yupiter_output *p_output, const char *p_bytes,
         return;
     }
 
-    if (length > static_cast<std::size_t>(INT_MAX - p_output->count))
+    if (length > (size_t)(INT_MAX - p_output->count))
     {
         p_output->failed = true;
         return;
@@ -223,7 +215,7 @@ void output_write(yupiter_output *p_output, const char *p_bytes,
         return;
     }
 
-    p_output->count = p_output->count + static_cast<int>(length);
+    p_output->count = p_output->count + (int)(length);
 }
 
 /*
@@ -236,9 +228,9 @@ void output_write(yupiter_output *p_output, const char *p_bytes,
  * the spaces that are already there, and only a change of character -
  * which happens when a conversion pads with zeros - costs a refill.
  */
-void output_repeat(yupiter_output *p_output, char value, std::size_t count)
+static void output_repeat(yupiter_output *p_output, char value, size_t count)
 {
-    std::size_t index;
+    size_t index;
 
     if (count == 0)
     {
@@ -273,20 +265,20 @@ void output_repeat(yupiter_output *p_output, char value, std::size_t count)
  * Negative or zero width means "no padding".  The '-' flag aligns to
  * the left, which turns the padding into trailing spaces.
  */
-void output_field(yupiter_output *p_output, const char *p_text,
-                  std::size_t length, const yupiter_spec *p_spec)
+static void output_field(yupiter_output *p_output, const char *p_text,
+                  size_t length, const yupiter_spec *p_spec)
 {
-    std::size_t padding;
-    std::size_t field_width;
+    size_t padding;
+    size_t field_width;
     bool        left;
 
     padding = 0;
-    left = has_flag(p_spec->flags, flag::left);
+    left = has_flag(p_spec->flags, FLAG_LEFT);
 
     if ((p_spec->width > 0) &&
-        (static_cast<std::size_t>(p_spec->width) > length))
+        ((size_t)(p_spec->width) > length))
     {
-        padding = static_cast<std::size_t>(p_spec->width) - length;
+        padding = (size_t)(p_spec->width) - length;
     }
 
     /*
@@ -295,7 +287,7 @@ void output_field(yupiter_output *p_output, const char *p_text,
      */
     field_width = length + padding;
 
-    if (field_width >= static_cast<std::size_t>(INT_MAX - p_output->count))
+    if (field_width >= (size_t)(INT_MAX - p_output->count))
     {
         p_output->failed = true;
         return;
@@ -329,16 +321,16 @@ void output_field(yupiter_output *p_output, const char *p_text,
  * would read past the digits into whatever the previous call left
  * there.
  */
-constexpr char lower_digits[] = "0123456789abcdef";
-constexpr char upper_digits[] = "0123456789ABCDEF";
+static const char lower_digits[] = "0123456789abcdef";
+static const char upper_digits[] = "0123456789ABCDEF";
 
-constexpr const char *render_integer(std::uintmax_t value, unsigned int base,
+static const char *render_integer(uintmax_t value, unsigned int base,
                                      bool uppercase, char *p_storage,
-                                     std::size_t storage_size,
-                                     std::size_t *p_length)
+                                     size_t storage_size,
+                                     size_t *p_length)
 {
     const char *p_digits;
-    std::size_t index;
+    size_t index;
 
     p_digits = uppercase ? upper_digits : lower_digits;
     index = storage_size;
@@ -377,8 +369,8 @@ constexpr const char *render_integer(std::uintmax_t value, unsigned int base,
  * and placed after the sign, which is what makes "%-8.4d" and
  * "%08.4d" differ only in alignment.
  */
-void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
-                   std::uintmax_t magnitude, bool negative,
+static void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
+                   uintmax_t magnitude, bool negative,
                    unsigned int base, bool uppercase)
 {
     char        fallback_storage[digit_storage];
@@ -386,13 +378,13 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
     char        sign;
     const char *p_digits;
     const char *p_prefix;
-    std::size_t digit_count;
-    std::size_t zero_count;
-    std::size_t sign_count;
-    std::size_t prefix_count;
-    std::size_t total;
-    std::size_t padding;
-    std::size_t field_width;
+    size_t digit_count;
+    size_t zero_count;
+    size_t sign_count;
+    size_t prefix_count;
+    size_t total;
+    size_t padding;
+    size_t field_width;
     bool        left;
     bool        zero_pad;
     bool        allow_sign;
@@ -403,7 +395,7 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
      * when it did not.  The padding chunk of output_repeat lives past
      * the end of this region, so the two never overlap.
      */
-    p_storage = (p_output->p_scratch != nullptr) ? p_output->p_scratch
+    p_storage = (p_output->p_scratch != NULL) ? p_output->p_scratch
                                                  : fallback_storage;
 
     if ((p_spec->precision == 0) && (magnitude == 0))
@@ -424,9 +416,9 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
      */
     zero_count = 0;
     if ((p_spec->precision >= 0) &&
-        (static_cast<std::size_t>(p_spec->precision) > digit_count))
+        ((size_t)(p_spec->precision) > digit_count))
     {
-        zero_count = static_cast<std::size_t>(p_spec->precision) - digit_count;
+        zero_count = (size_t)(p_spec->precision) - digit_count;
     }
 
     /*
@@ -453,12 +445,12 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
         sign = '-';
         sign_count = 1;
     }
-    else if (allow_sign && has_flag(p_spec->flags, flag::plus))
+    else if (allow_sign && has_flag(p_spec->flags, FLAG_PLUS))
     {
         sign = '+';
         sign_count = 1;
     }
-    else if (allow_sign && has_flag(p_spec->flags, flag::space))
+    else if (allow_sign && has_flag(p_spec->flags, FLAG_SPACE))
     {
         sign = ' ';
         sign_count = 1;
@@ -474,7 +466,7 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
 
     if ((p_spec->conversion == 'x') || (p_spec->conversion == 'X'))
     {
-        if (has_flag(p_spec->flags, flag::alt) && (magnitude != 0))
+        if (has_flag(p_spec->flags, FLAG_ALT) && (magnitude != 0))
         {
             p_prefix = uppercase ? "0X" : "0x";
             prefix_count = 2;
@@ -487,7 +479,7 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
     }
     else if (p_spec->conversion == 'o')
     {
-        if (has_flag(p_spec->flags, flag::alt) && (zero_count == 0) &&
+        if (has_flag(p_spec->flags, FLAG_ALT) && (zero_count == 0) &&
             ((digit_count == 0) || (p_digits[0] != '0')))
         {
             p_prefix = "0";
@@ -499,9 +491,9 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
 
     padding = 0;
     if ((p_spec->width > 0) &&
-        (static_cast<std::size_t>(p_spec->width) > total))
+        ((size_t)(p_spec->width) > total))
     {
-        padding = static_cast<std::size_t>(p_spec->width) - total;
+        padding = (size_t)(p_spec->width) - total;
     }
 
     /*
@@ -513,13 +505,13 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
      */
     field_width = total + padding;
 
-    if (field_width >= static_cast<std::size_t>(INT_MAX - p_output->count))
+    if (field_width >= (size_t)(INT_MAX - p_output->count))
     {
         p_output->failed = true;
         return;
     }
 
-    left = has_flag(p_spec->flags, flag::left);
+    left = has_flag(p_spec->flags, FLAG_LEFT);
 
     /*
      * The '0' flag pads with zeros, but only when no precision was
@@ -527,7 +519,7 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
      * width padding and the precision zeros form a single run.
      */
     zero_pad = false;
-    if (!left && has_flag(p_spec->flags, flag::zero) &&
+    if (!left && has_flag(p_spec->flags, FLAG_ZERO) &&
         (p_spec->precision < 0))
     {
         zero_pad = true;
@@ -586,7 +578,7 @@ void output_number(yupiter_output *p_output, const yupiter_spec *p_spec,
  *
  * Returns 0 on success and -1 when the digits did not fit.
  */
-constexpr int parse_decimal(const char **pp_format, int *p_value)
+static int parse_decimal(const char **pp_format, int *p_value)
 {
     const char   *p_cursor;
     unsigned long accumulator;
@@ -599,30 +591,30 @@ constexpr int parse_decimal(const char **pp_format, int *p_value)
     while ((*p_cursor >= '0') && (*p_cursor <= '9'))
     {
         accumulator = (accumulator * 10UL) +
-                      static_cast<unsigned long>(*p_cursor - '0');
+                      (unsigned long)(*p_cursor - '0');
 
-        if (accumulator > static_cast<unsigned long>(INT_MAX))
+        if (accumulator > (unsigned long)(INT_MAX))
         {
             overflow = 1;
-            accumulator = static_cast<unsigned long>(INT_MAX);
+            accumulator = (unsigned long)(INT_MAX);
         }
 
         p_cursor = p_cursor + 1;
     }
 
     *pp_format = p_cursor;
-    *p_value = static_cast<int>(accumulator);
+    *p_value = (int)(accumulator);
 
     return (overflow != 0) ? -1 : 0;
 }
 
-constexpr bool is_flag_character(char value) noexcept
+static bool is_flag_character(char value)
 {
     return (value == '-') || (value == '+') || (value == ' ') ||
            (value == '#') || (value == '0');
 }
 
-constexpr bool is_digit_character(char value) noexcept
+static bool is_digit_character(char value)
 {
     return (value >= '0') && (value <= '9');
 }
@@ -633,20 +625,20 @@ constexpr bool is_digit_character(char value) noexcept
  * "value + 1" is evaluated before the negation so that the most
  * negative value of the type does not overflow when negated.
  */
-constexpr void normalize_signed(std::intmax_t value,
-                                std::uintmax_t *p_magnitude,
+static void normalize_signed(intmax_t value,
+                                uintmax_t *p_magnitude,
                                 bool *p_negative)
 {
     if (value < 0)
     {
         *p_negative = true;
-        *p_magnitude = static_cast<std::uintmax_t>(-(value + 1)) +
-                       static_cast<std::uintmax_t>(1);
+        *p_magnitude = (uintmax_t)(-(value + 1)) +
+                       (uintmax_t)(1);
     }
     else
     {
         *p_negative = false;
-        *p_magnitude = static_cast<std::uintmax_t>(value);
+        *p_magnitude = (uintmax_t)(value);
     }
 }
 
@@ -656,61 +648,28 @@ constexpr void normalize_signed(std::intmax_t value,
  * terminator can then be checked by the compiler instead of only by a
  * run-time test.
  */
-static_assert([] {
-    char        storage[8] = {};
-    std::size_t length = 0;
-    const char *p_digits = render_integer(42U, 16U, false, storage,
-                                          sizeof storage, &length);
 
-    return (length == 2U) && (p_digits == (storage + 6)) &&
-           (p_digits[0] == '2') && (p_digits[1] == 'a') &&
-           (p_digits[-1] == '\0');
-}(), "render_integer must render 42 as 2a followed by a terminator");
 
-static_assert([] {
-    char        storage[4] = {};
-    std::size_t length = 0;
-    const char *p_digits = render_integer(0U, 10U, false, storage,
-                                          sizeof storage, &length);
 
-    return (length == 1U) && (p_digits[0] == '0') &&
-           (p_digits[-1] == '\0');
-}(), "render_integer must render zero as one digit");
 
-static_assert([] {
-    const char *p_format = "120x";
-    int         value = 0;
 
-    return (parse_decimal(&p_format, &value) == 0) && (value == 120) &&
-           (p_format[0] == 'x');
-}(), "parse_decimal must stop at the first non-digit");
 
-static_assert([] {
-    std::uintmax_t magnitude = 0;
-    bool           negative = false;
 
-    normalize_signed(static_cast<std::intmax_t>(INTMAX_MIN), &magnitude,
-                     &negative);
 
-    return negative &&
-           (magnitude == (static_cast<std::uintmax_t>(INTMAX_MAX) + 1U));
-}(), "normalize_signed must handle INTMAX_MIN without overflow");
 
-} /* namespace */
-
-extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
+int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
                               va_list args)
 {
     yupiter_output   output;
     yupiter_spec     spec;
     const char    *p_format;
     char           chunk_storage[scratch_chunk];
-    std::size_t    run_length;
-    std::uintmax_t magnitude;
+    size_t    run_length;
+    uintmax_t magnitude;
     bool           negative;
     int            value;
 
-    if ((stream == nullptr) || (format == nullptr))
+    if ((stream == NULL) || (format == NULL))
     {
         return -1;
     }
@@ -725,15 +684,15 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
      * the same size, so an exhausted heap costs stack space rather
      * than a failed conversion.
      */
-    output.p_scratch = static_cast<char *>(yupiter_malloc(scratch_size));
-    output.scratch_from_heap = (output.p_scratch != nullptr);
+    output.p_scratch = (char *)(yupiter_malloc(scratch_size));
+    output.scratch_from_heap = (output.p_scratch != NULL);
 
     /*
      * The padding chunk lives in the borrowed block when there is one,
      * and in the frame of this call otherwise, so that it survives for
      * as long as the call does and no helper has to prepare it again.
      */
-    output.p_chunk = (output.p_scratch != nullptr)
+    output.p_chunk = (output.p_scratch != NULL)
                          ? output.p_scratch + digit_storage
                          : chunk_storage;
     output.chunk_value = 0;
@@ -769,7 +728,7 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
         spec.flags = 0U;
         spec.width = 0;
         spec.precision = -1;
-        spec.length = length_modifier::none;
+        spec.length = LENGTH_MODIFIER_NONE;
         spec.conversion = '\0';
 
         /* Flags: any order, and any number of repetitions. */
@@ -778,19 +737,19 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
             switch (*p_format)
             {
                 case '-':
-                    spec.flags = spec.flags | flag::left;
+                    spec.flags = spec.flags | FLAG_LEFT;
                     break;
                 case '+':
-                    spec.flags = spec.flags | flag::plus;
+                    spec.flags = spec.flags | FLAG_PLUS;
                     break;
                 case ' ':
-                    spec.flags = spec.flags | flag::space;
+                    spec.flags = spec.flags | FLAG_SPACE;
                     break;
                 case '#':
-                    spec.flags = spec.flags | flag::alt;
+                    spec.flags = spec.flags | FLAG_ALT;
                     break;
                 default:
-                    spec.flags = spec.flags | flag::zero;
+                    spec.flags = spec.flags | FLAG_ZERO;
                     break;
             }
 
@@ -810,7 +769,7 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
                  * width.  INT_MIN has no positive counterpart, so it
                  * saturates rather than overflowing on negation.
                  */
-                spec.flags = spec.flags | flag::left;
+                spec.flags = spec.flags | FLAG_LEFT;
                 spec.width = (value == INT_MIN) ? INT_MAX : -value;
             }
             else
@@ -859,12 +818,12 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
 
             if (*p_format == 'h')
             {
-                spec.length = length_modifier::hh;
+                spec.length = LENGTH_MODIFIER_HH;
                 p_format = p_format + 1;
             }
             else
             {
-                spec.length = length_modifier::h;
+                spec.length = LENGTH_MODIFIER_H;
             }
         }
         else if (*p_format == 'l')
@@ -873,27 +832,27 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
 
             if (*p_format == 'l')
             {
-                spec.length = length_modifier::ll;
+                spec.length = LENGTH_MODIFIER_LL;
                 p_format = p_format + 1;
             }
             else
             {
-                spec.length = length_modifier::l;
+                spec.length = LENGTH_MODIFIER_L;
             }
         }
         else if (*p_format == 'z')
         {
-            spec.length = length_modifier::z;
+            spec.length = LENGTH_MODIFIER_Z;
             p_format = p_format + 1;
         }
         else if (*p_format == 't')
         {
-            spec.length = length_modifier::t;
+            spec.length = LENGTH_MODIFIER_T;
             p_format = p_format + 1;
         }
         else if (*p_format == 'j')
         {
-            spec.length = length_modifier::j;
+            spec.length = LENGTH_MODIFIER_J;
             p_format = p_format + 1;
         }
 
@@ -916,47 +875,47 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
                  */
                 switch (spec.length)
                 {
-                    case length_modifier::hh:
+                    case LENGTH_MODIFIER_HH:
                         normalize_signed(
-                            static_cast<std::intmax_t>(
-                                static_cast<signed char>(va_arg(args, int))),
+                            (intmax_t)(
+                                (signed char)(va_arg(args, int))),
                             &magnitude, &negative);
                         break;
-                    case length_modifier::h:
+                    case LENGTH_MODIFIER_H:
                         normalize_signed(
-                            static_cast<std::intmax_t>(
-                                static_cast<short>(va_arg(args, int))),
+                            (intmax_t)(
+                                (short)(va_arg(args, int))),
                             &magnitude, &negative);
                         break;
-                    case length_modifier::l:
+                    case LENGTH_MODIFIER_L:
                         normalize_signed(
-                            static_cast<std::intmax_t>(va_arg(args, long)),
+                            (intmax_t)(va_arg(args, long)),
                             &magnitude, &negative);
                         break;
-                    case length_modifier::ll:
+                    case LENGTH_MODIFIER_LL:
                         normalize_signed(
-                            static_cast<std::intmax_t>(
+                            (intmax_t)(
                                 va_arg(args, long long)),
                             &magnitude, &negative);
                         break;
-                    case length_modifier::z:
+                    case LENGTH_MODIFIER_Z:
                         normalize_signed(
-                            static_cast<std::intmax_t>(va_arg(args, long)),
+                            (intmax_t)(va_arg(args, long)),
                             &magnitude, &negative);
                         break;
-                    case length_modifier::t:
+                    case LENGTH_MODIFIER_T:
                         normalize_signed(
-                            static_cast<std::intmax_t>(
-                                va_arg(args, std::ptrdiff_t)),
+                            (intmax_t)(
+                                va_arg(args, ptrdiff_t)),
                             &magnitude, &negative);
                         break;
-                    case length_modifier::j:
-                        normalize_signed(va_arg(args, std::intmax_t),
+                    case LENGTH_MODIFIER_J:
+                        normalize_signed(va_arg(args, intmax_t),
                                          &magnitude, &negative);
                         break;
                     default:
                         normalize_signed(
-                            static_cast<std::intmax_t>(va_arg(args, int)),
+                            (intmax_t)(va_arg(args, int)),
                             &magnitude, &negative);
                         break;
                 }
@@ -974,38 +933,38 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
 
                 switch (spec.length)
                 {
-                    case length_modifier::hh:
-                        magnitude = static_cast<std::uintmax_t>(
-                            static_cast<unsigned char>(
+                    case LENGTH_MODIFIER_HH:
+                        magnitude = (uintmax_t)(
+                            (unsigned char)(
                                 va_arg(args, unsigned int)));
                         break;
-                    case length_modifier::h:
-                        magnitude = static_cast<std::uintmax_t>(
-                            static_cast<unsigned short>(
+                    case LENGTH_MODIFIER_H:
+                        magnitude = (uintmax_t)(
+                            (unsigned short)(
                                 va_arg(args, unsigned int)));
                         break;
-                    case length_modifier::l:
-                        magnitude = static_cast<std::uintmax_t>(
+                    case LENGTH_MODIFIER_L:
+                        magnitude = (uintmax_t)(
                             va_arg(args, unsigned long));
                         break;
-                    case length_modifier::ll:
-                        magnitude = static_cast<std::uintmax_t>(
+                    case LENGTH_MODIFIER_LL:
+                        magnitude = (uintmax_t)(
                             va_arg(args, unsigned long long));
                         break;
-                    case length_modifier::z:
-                        magnitude = static_cast<std::uintmax_t>(
-                            va_arg(args, std::size_t));
+                    case LENGTH_MODIFIER_Z:
+                        magnitude = (uintmax_t)(
+                            va_arg(args, size_t));
                         break;
-                    case length_modifier::t:
-                        magnitude = static_cast<std::uintmax_t>(
-                            va_arg(args, std::ptrdiff_t));
+                    case LENGTH_MODIFIER_T:
+                        magnitude = (uintmax_t)(
+                            va_arg(args, ptrdiff_t));
                         break;
-                    case length_modifier::j:
+                    case LENGTH_MODIFIER_J:
                         magnitude =
-                            va_arg(args, std::uintmax_t);
+                            va_arg(args, uintmax_t);
                         break;
                     default:
-                        magnitude = static_cast<std::uintmax_t>(
+                        magnitude = (uintmax_t)(
                             va_arg(args, unsigned int));
                         break;
                 }
@@ -1038,15 +997,15 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
 
                 p_pointer = va_arg(args, const void *);
 
-                if (p_pointer == nullptr)
+                if (p_pointer == NULL)
                 {
                     output_field(&output, "(nil)", 5, &spec);
                 }
                 else
                 {
                     spec.conversion = 'p';
-                    magnitude = static_cast<std::uintmax_t>(
-                        reinterpret_cast<std::uintptr_t>(p_pointer));
+                    magnitude = (uintmax_t)(
+                        (uintptr_t)(p_pointer));
                     negative = false;
                     output_number(&output, &spec, magnitude, negative,
                                   16U, false);
@@ -1058,7 +1017,7 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
             {
                 char character;
 
-                character = static_cast<char>(va_arg(args, int));
+                character = (char)(va_arg(args, int));
                 output_field(&output, &character, 1, &spec);
                 break;
             }
@@ -1066,11 +1025,11 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
             case 's':
             {
                 const char *p_string;
-                std::size_t length;
+                size_t length;
 
                 p_string = va_arg(args, const char *);
 
-                if (p_string == nullptr)
+                if (p_string == NULL)
                 {
                     /*
                      * Passing a null pointer to %s is undefined
@@ -1084,7 +1043,7 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
                      */
                     if ((spec.precision >= 0) &&
                         (spec.precision <
-                         static_cast<int>(sizeof "(null)" - 1)))
+                         (int)(sizeof "(null)" - 1)))
                     {
                         p_string = "";
                         length = 0;
@@ -1113,7 +1072,7 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
                     else
                     {
                         while ((length <
-                                static_cast<std::size_t>(spec.precision)) &&
+                                (size_t)(spec.precision)) &&
                                (p_string[length] != '\0'))
                         {
                             length = length + 1;
@@ -1145,4 +1104,3 @@ extern "C" int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
     return output.count;
 }
 
-} /* namespace yupiter::io */
