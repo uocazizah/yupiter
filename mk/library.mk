@@ -22,17 +22,19 @@ shared: $(SHARED_LIB) $(SHARED_SONAME) $(SHARED_LINK)
 
 $(STATIC_LIB): $(ARCHIVE_OBJECTS)
 	@mkdir -p $(dir $@)
-	rm -f $@
-	$(AR) rcs $@ $^
-	$(RANLIB) $@
+	$(ECHO) "  AR $@"
+	$(Q)rm -f $@
+	$(Q)$(AR) rcs $@ $^
+	$(Q)$(RANLIB) $@
 
 $(SHARED_LIB): $(SHARED_OBJECTS)
 	@mkdir -p $(dir $@)
-	$(CXX) -shared -nostdlib -Wl,--no-undefined \
+	$(ECHO) "  LD $@"
+	$(Q)$(CC) -shared -nostdlib -Wl,--no-undefined \
 	    -Wl,-soname,$(SHARED_SONAME_NAME) -o $@ $^
 
 $(SHARED_SONAME): $(SHARED_LIB)
-	ln -sf $(SHARED_REAL_NAME) $@
+	$(Q)ln -sf $(SHARED_REAL_NAME) $@
 
 $(SHARED_LINK): $(SHARED_LIB)
-	ln -sf $(SHARED_REAL_NAME) $@
+	$(Q)ln -sf $(SHARED_REAL_NAME) $@
