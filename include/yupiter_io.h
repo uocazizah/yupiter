@@ -43,7 +43,7 @@
  * separated and individually testable.
  *
  * The declarations are wrapped in an "extern "C"" specification so
- * that the C++23 implementation defines them with the same linkage the
+ * that the C17 implementation defines them with the same linkage the
  * declarations promise, and the header itself is kept ISO C17 so that
  * the C test programs can include it too: a test that reaches an
  * internal interface is how the stream discard, the system-call
@@ -56,7 +56,7 @@
 #include "yupiter.h"
 
 #ifdef __cplusplus
-extern "C" {
+{
 #endif
 
 /*
@@ -219,7 +219,7 @@ void  *yupiter_memcpy(void *p_destination, const void *p_source, size_t length);
 void  *yupiter_memset(void *p_destination, int value, size_t length);
 
 #ifdef __cplusplus
-} /* extern "C" */
+} /* */
 #endif
 
 #endif /* YUPITER_IO_H */
