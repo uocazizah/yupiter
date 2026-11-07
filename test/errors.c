@@ -49,7 +49,7 @@
  * compile-time check.
  */
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
 typedef int (*print_function)(const char *, ...);
 typedef int (*stream_print_function)(yupiter_FILE *, const char *, ...);
