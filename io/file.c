@@ -49,15 +49,11 @@
  * silently at run time.
  */
 
-#include <cstddef>
+#include <stddef.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
-namespace yupiter::io
-{
 
-namespace
-{
 
 /*
  * The three standard streams.  The pointers to them are const because
@@ -70,7 +66,7 @@ namespace
  * unbuffered as well, for the opposite reason: nothing writes to it,
  * so a buffer it could never flush would be dead space in the object.
  */
-constinit yupiter_FILE yupiter_stream_stdin{
+yupiter_FILE yupiter_stream_stdin = {
     0,   /* fd            */
     0,   /* error         */
     1,   /* unbuffered    */
@@ -78,13 +74,13 @@ constinit yupiter_FILE yupiter_stream_stdin{
     0,   /* pushback      */
     0,   /* has_pushback  */
     0,   /* length        */
-    {},  /* buffer        */
+    {0},  /* buffer        */ 
     0,   /* input_size    */
     0,   /* input_pos     */
-    {}   /* input_buffer  */
+    {0}   /* input_buffer  */ 
 };
 
-constinit yupiter_FILE yupiter_stream_stdout{
+yupiter_FILE yupiter_stream_stdout = {
     1,   /* fd            */
     0,   /* error         */
     0,   /* buffered      */
@@ -92,13 +88,13 @@ constinit yupiter_FILE yupiter_stream_stdout{
     0,   /* pushback      */
     0,   /* has_pushback  */
     0,   /* length        */
-    {},  /* buffer        */
+    {0},  /* buffer        */ 
     0,   /* input_size    */
     0,   /* input_pos     */
-    {}   /* input_buffer  */
+    {0}   /* input_buffer  */ 
 };
 
-constinit yupiter_FILE yupiter_stream_stderr{
+yupiter_FILE yupiter_stream_stderr = {
     2,   /* fd            */
     0,   /* error         */
     1,   /* unbuffered    */
@@ -106,26 +102,25 @@ constinit yupiter_FILE yupiter_stream_stderr{
     0,   /* pushback      */
     0,   /* has_pushback  */
     0,   /* length        */
-    {},  /* buffer        */
+    {0},  /* buffer        */ 
     0,   /* input_size    */
     0,   /* input_pos     */
-    {}   /* input_buffer  */
+    {0}   /* input_buffer  */ 
 };
 
-} /* namespace */
 
-extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stdin =
+YUPITER_PUBLIC yupiter_FILE *const yupiter_stdin =
     &yupiter_stream_stdin;
-extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stdout =
+YUPITER_PUBLIC yupiter_FILE *const yupiter_stdout =
     &yupiter_stream_stdout;
-extern "C" YUPITER_PUBLIC constinit yupiter_FILE *const yupiter_stderr =
+YUPITER_PUBLIC yupiter_FILE *const yupiter_stderr =
     &yupiter_stream_stderr;
 
-extern "C" int yupiter_stream_flush(yupiter_FILE *stream)
+int yupiter_stream_flush(yupiter_FILE *stream)
 {
-    std::size_t length;
+    size_t length;
 
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return -1;
     }
@@ -153,9 +148,9 @@ extern "C" int yupiter_stream_flush(yupiter_FILE *stream)
     return 0;
 }
 
-extern "C" void yupiter_stream_discard(yupiter_FILE *stream)
+void yupiter_stream_discard(yupiter_FILE *stream)
 {
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return;
     }
@@ -178,22 +173,22 @@ extern "C" void yupiter_stream_discard(yupiter_FILE *stream)
  * already repeats a short write until the whole payload has been
  * accepted.
  */
-extern "C" int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
-                                  std::size_t length)
+int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
+                                  size_t length)
 {
     const unsigned char *p_bytes;
-    std::size_t          remaining;
-    std::size_t          available;
-    std::size_t          taken;
-    std::size_t          index;
+    size_t          remaining;
+    size_t          available;
+    size_t          taken;
+    size_t          index;
     int                  newline;
 
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return -1;
     }
 
-    if ((p_buffer == nullptr) && (length != 0))
+    if ((p_buffer == NULL) && (length != 0))
     {
         stream->error = 1;
         return -1;
@@ -204,7 +199,7 @@ extern "C" int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
         return -1;
     }
 
-    p_bytes = static_cast<const unsigned char *>(p_buffer);
+    p_bytes = (const unsigned char *)(p_buffer);
     remaining = length;
 
     while (remaining > 0)
@@ -249,7 +244,7 @@ extern "C" int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
 
         taken = (remaining < available) ? remaining : available;
 
-        static_cast<void>(yupiter_memcpy(&stream->buffer[stream->length],
+        (void)(yupiter_memcpy(&stream->buffer[stream->length],
                                        p_bytes, taken));
         stream->length = stream->length + taken;
 
@@ -297,22 +292,22 @@ extern "C" int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
     return 0;
 }
 
-extern "C" int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
-                                 std::size_t length, std::size_t *p_count)
+int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
+                                 size_t length, size_t *p_count)
 {
     unsigned char       *p_destination;
-    std::size_t          remaining;
-    std::size_t          produced;
+    size_t          remaining;
+    size_t          produced;
 
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return -1;
     }
 
-    if ((p_buffer == nullptr) && (length != 0))
+    if ((p_buffer == NULL) && (length != 0))
     {
         stream->error = 1;
-        if (p_count != nullptr)
+        if (p_count != NULL)
         {
             *p_count = 0;
         }
@@ -321,24 +316,24 @@ extern "C" int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
 
     if (stream->error != 0)
     {
-        if (p_count != nullptr)
+        if (p_count != NULL)
         {
             *p_count = 0;
         }
         return -1;
     }
 
-    p_destination = static_cast<unsigned char *>(p_buffer);
+    p_destination = (unsigned char *)(p_buffer);
     remaining = length;
     produced = 0;
 
     while (remaining > 0)
     {
-        std::size_t available;
+        size_t available;
 
         if (stream->input_pos >= stream->input_size)
         {
-            std::size_t got = 0;
+            size_t got = 0;
 
             if (stream->eof != 0)
             {
@@ -349,7 +344,7 @@ extern "C" int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
                                YUPITER_BUFFER_SIZE, &got) != 0)
             {
                 stream->error = 1;
-                if (p_count != nullptr)
+                if (p_count != NULL)
                 {
                     *p_count = produced;
                 }
@@ -373,7 +368,7 @@ extern "C" int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
             available = remaining;
         }
 
-        static_cast<void>(yupiter_memcpy(p_destination + produced,
+        (void)(yupiter_memcpy(p_destination + produced,
                                        &stream->input_buffer[stream->input_pos],
                                        available));
 
@@ -382,7 +377,7 @@ extern "C" int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
         remaining = remaining - available;
     }
 
-    if (p_count != nullptr)
+    if (p_count != NULL)
     {
         *p_count = produced;
     }
@@ -390,11 +385,11 @@ extern "C" int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
     return 0;
 }
 
-extern "C" int yupiter_stream_getc(yupiter_FILE *stream)
+int yupiter_stream_getc(yupiter_FILE *stream)
 {
     int         value;
 
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return YUPITER_EOF;
     }
@@ -412,7 +407,7 @@ extern "C" int yupiter_stream_getc(yupiter_FILE *stream)
 
     if (stream->input_pos < stream->input_size)
     {
-        value = static_cast<unsigned char>(
+        value = (unsigned char)(
             stream->input_buffer[stream->input_pos]);
         stream->input_pos = stream->input_pos + 1;
         return value;
@@ -424,7 +419,7 @@ extern "C" int yupiter_stream_getc(yupiter_FILE *stream)
     }
 
     {
-        std::size_t got = 0;
+        size_t got = 0;
 
         if (yupiter_sys_read(stream->fd, stream->input_buffer,
                            YUPITER_BUFFER_SIZE, &got) != 0)
@@ -442,16 +437,16 @@ extern "C" int yupiter_stream_getc(yupiter_FILE *stream)
         stream->input_size = got;
         stream->input_pos = 0;
 
-        value = static_cast<unsigned char>(
+        value = (unsigned char)(
             stream->input_buffer[stream->input_pos]);
         stream->input_pos = stream->input_pos + 1;
         return value;
     }
 }
 
-extern "C" int yupiter_stream_ungetc(yupiter_FILE *stream, int c)
+int yupiter_stream_ungetc(yupiter_FILE *stream, int c)
 {
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return YUPITER_EOF;
     }
@@ -476,4 +471,3 @@ extern "C" int yupiter_stream_ungetc(yupiter_FILE *stream, int c)
     return c;
 }
 
-} /* namespace yupiter::io */
