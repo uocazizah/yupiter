@@ -7,7 +7,7 @@ Requirements
   * GNU Make 3.82 or newer.
   * POSIX shell, sed, awk, install, nm, readelf.
   * GNU or Clang C and C++ compilers.
-  * A C++23 compiler with freestanding standard library support
+  * A C17 compiler with freestanding standard library support
     (libstdc++ from GCC 13; libc++ and MSVC do not).
   * Linux on aarch64 or x86_64.
 
@@ -19,7 +19,7 @@ Quick start
 
     ./configure
     make
-    make check
+    make test
     make install
 
 "make" builds libyupiter.a and libyupiter.so by default.  The build
@@ -46,14 +46,14 @@ rejected at configure time.
 Flags
 -----
 
-The library is freestanding C++23: -ffreestanding, -fno-builtin,
+The library is freestanding C17: -ffreestanding, -fno-builtin,
 -fno-stack-protector, -fno-exceptions, -fno-rtti,
 -fno-threadsafe-statics, -fvisibility=hidden.  The tests are hosted
 C17/C++17 with the same warnings but no freestanding restrictions,
 because they link the archive and the startup file.
 
 The public header and C tests are ISO C17 with extensions off; the
-implementation is ISO C++23 with extensions off.  The C++ compatibility
+implementation is ISO C17 with extensions off.  The C++ compatibility
 test is C++17 on purpose.
 
 
