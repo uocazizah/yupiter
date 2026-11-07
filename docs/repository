@@ -4,7 +4,7 @@ map of the yupiter repository
 yupiter is a freestanding C library for Linux on aarch64 and x86_64.
 No host C library is used: it supplies its own entry point, syscall
 layer and formatting engine.  The interface is ISO C17; the
-implementation is ISO C++23, built freestanding.
+implementation is ISO C17, built freestanding.
 
 
 Top-level entries
@@ -14,8 +14,8 @@ Top-level entries
 python/      PyO3/maturin binding.  Not part of the library build.
              See docs/python-binding.
 assembly/    Freestanding entry point and syscall trampolines.
-io/          Streams, formatting and the Linux syscall layer (C++23).
-mem/         Allocator (C++23).
+io/          Streams, formatting and the Linux syscall layer (C17).
+mem/         Allocator (C17).
 include/     Public headers and internal headers shared with tests.
 etc/         Templates for installed package metadata.
 mk/          Makefile modules.
