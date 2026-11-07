@@ -47,18 +47,16 @@
  * None of these functions is part of the public API.
  */
 
-#include <cstddef>
+#include <stddef.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
-namespace yupiter::io
-{
 
-extern "C" std::size_t yupiter_strlen(const char *p_string)
+size_t yupiter_strlen(const char *p_string)
 {
     const char *p_cursor;
 
-    if (p_string == nullptr)
+    if (p_string == NULL)
     {
         return 0;
     }
@@ -76,11 +74,11 @@ extern "C" std::size_t yupiter_strlen(const char *p_string)
         p_cursor = p_cursor + 1;
     }
 
-    return static_cast<std::size_t>(p_cursor - p_string);
+    return (size_t)(p_cursor - p_string);
 }
 
-extern "C" void *yupiter_memcpy(void *p_destination, const void *p_source,
-                              std::size_t length)
+void *yupiter_memcpy(void *p_destination, const void *p_source,
+                              size_t length)
 {
     /*
      * Sixteen bytes is the widest block every target this library
@@ -91,12 +89,12 @@ extern "C" void *yupiter_memcpy(void *p_destination, const void *p_source,
      * to be cast to a wider type; the copy stays inside "length" and
      * reads no byte past the end of the source.
      */
-    constexpr std::size_t block_size = 16;
+    enum { block_size = 16 };
 
     unsigned char       *p_to;
     const unsigned char *p_from;
 
-    if ((p_destination == nullptr) || (p_source == nullptr))
+    if ((p_destination == NULL) || (p_source == NULL))
     {
         return p_destination;
     }
@@ -111,13 +109,13 @@ extern "C" void *yupiter_memcpy(void *p_destination, const void *p_source,
         return p_destination;
     }
 
-    p_to = static_cast<unsigned char *>(p_destination);
-    p_from = static_cast<const unsigned char *>(p_source);
+    p_to = (unsigned char *)(p_destination);
+    p_from = (const unsigned char *)(p_source);
 
     while (length >= block_size)
     {
         unsigned char block[block_size];
-        std::size_t   index;
+        size_t   index;
 
         for (index = 0; index < block_size; index = index + 1)
         {
@@ -145,21 +143,21 @@ extern "C" void *yupiter_memcpy(void *p_destination, const void *p_source,
     return p_destination;
 }
 
-extern "C" void *yupiter_memset(void *p_destination, int value,
-                              std::size_t length)
+void *yupiter_memset(void *p_destination, int value,
+                              size_t length)
 {
-    constexpr std::size_t block_size = 16;
+    enum { block_size = 16 };
 
     unsigned char *p_to;
     unsigned char  byte_value;
 
-    if (p_destination == nullptr)
+    if (p_destination == NULL)
     {
         return p_destination;
     }
 
-    p_to = static_cast<unsigned char *>(p_destination);
-    byte_value = static_cast<unsigned char>(value);
+    p_to = (unsigned char *)(p_destination);
+    byte_value = (unsigned char)(value);
 
     /*
      * Fill one block once and store it repeatedly.  As in
@@ -170,7 +168,7 @@ extern "C" void *yupiter_memset(void *p_destination, int value,
     if (length >= block_size)
     {
         unsigned char block[block_size];
-        std::size_t   index;
+        size_t   index;
 
         for (index = 0; index < block_size; index = index + 1)
         {
@@ -199,4 +197,3 @@ extern "C" void *yupiter_memset(void *p_destination, int value,
     return p_destination;
 }
 
-} /* namespace yupiter::io */
