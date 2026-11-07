@@ -7,7 +7,7 @@ success it is flushed.  Direct writes to the kernel cannot be
 discarded and are only used for unbuffered streams or payloads larger
 than the staging buffer.  Everything else is in io/vfprintf.cxx.
 
-The engine is C++23 with C linkage; internal helpers are in an
+The engine is C17 with C linkage; internal helpers are in an
 anonymous namespace.
 
 
