@@ -57,7 +57,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
 /*
  * The real trampoline, compiled into this test from the target's
