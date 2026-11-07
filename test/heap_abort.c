@@ -50,8 +50,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "yupiter_io.hxx"
-#include "yupiter_mem.hxx"
+#include "yupiter_io.h"
+#include "yupiter_mem.h"
 
 /*
  * Compare two null-terminated strings without a string function of
