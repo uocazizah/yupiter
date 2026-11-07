@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: GPL-2.0-or-later OR LGPL-2.1-or-later OR Apache-2.0
+# Copyright (C) 2026 Uoc Azizah
+
+name: release
+
+on:
+  release:
+    types: [created]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    name: ${{ matrix.arch }}-linux-gnu-${{ matrix.compiler }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-26.04
+            compiler: gcc
+            cc: gcc
+            cxx: g++
+          - arch: aarch64
+            runner: ubuntu-26.04-arm
+            compiler: gcc
+            cc: gcc
+            cxx: g++
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: |
+          ./configure \
+              --cc="${{ matrix.cc }}" \
+              --cxx="${{ matrix.cxx }}" \
+              --build-type="release" \
+              --heap-size="4096" \
+              --enable-static="yes" \
+              --enable-shared="yes" \
+              --enable-tests="yes"
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Test
+        run: make test
+
+      - name: Stage installation
+        run: |
+          rm -rf stage
+          make install DESTDIR="$PWD/stage"
+
+      - name: Create asset
+        run: |
+          asset="${{ matrix.arch }}-linux-gnu-${{ matrix.compiler }}.tar.gz"
+          tar -czf "$asset" -C stage .
+
+      - name: Upload asset to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.arch }}-linux-gnu-${{ matrix.compiler }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
