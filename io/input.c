@@ -5,33 +5,31 @@
  * Copyright (C) 2026 Uoc Azizah
  */
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "yupiter.h"
-#include "yupiter_io.hxx"
+#include "yupiter_io.h"
 
-namespace yupiter::io
-{
 
-extern "C" YUPITER_PUBLIC int yupiter_getchar(void)
+YUPITER_PUBLIC int yupiter_getchar(void)
 {
     return yupiter_fgetc(yupiter_stdin);
 }
 
-extern "C" YUPITER_PUBLIC int yupiter_fgetc(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_fgetc(yupiter_FILE *stream)
 {
     return yupiter_stream_getc(stream);
 }
 
-extern "C" YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stream)
+YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stream)
 {
     int   index;
     int   value;
 
-    if ((s == nullptr) || (n <= 0) || (stream == nullptr))
+    if ((s == NULL) || (n <= 0) || (stream == NULL))
     {
-        return nullptr;
+        return NULL;
     }
 
     index = 0;
@@ -44,12 +42,12 @@ extern "C" YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stre
         {
             if (index == 0)
             {
-                return nullptr;
+                return NULL;
             }
             break;
         }
 
-        s[index] = static_cast<char>(value);
+        s[index] = (char)(value);
         index = index + 1;
 
         if (value == '\n')
@@ -62,14 +60,14 @@ extern "C" YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stre
     return s;
 }
 
-extern "C" YUPITER_PUBLIC std::size_t yupiter_fread(void *ptr, std::size_t size,
-                                    std::size_t nmemb, yupiter_FILE *stream)
+YUPITER_PUBLIC size_t yupiter_fread(void *ptr, size_t size,
+                                    size_t nmemb, yupiter_FILE *stream)
 {
-    std::size_t total;
-    std::size_t produced;
+    size_t total;
+    size_t produced;
     int         overflow;
 
-    if ((ptr == nullptr) || (stream == nullptr))
+    if ((ptr == NULL) || (stream == NULL))
     {
         return 0;
     }
@@ -100,14 +98,14 @@ extern "C" YUPITER_PUBLIC std::size_t yupiter_fread(void *ptr, std::size_t size,
     return produced / size;
 }
 
-extern "C" YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_FILE *stream)
 {
     return yupiter_stream_ungetc(stream, c);
 }
 
-extern "C" YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream)
 {
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return 0;
     }
@@ -115,9 +113,9 @@ extern "C" YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream)
     return stream->eof;
 }
 
-extern "C" YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream)
 {
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return 0;
     }
@@ -125,9 +123,9 @@ extern "C" YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream)
     return stream->error;
 }
 
-extern "C" YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream)
+YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream)
 {
-    if (stream == nullptr)
+    if (stream == NULL)
     {
         return;
     }
@@ -137,9 +135,8 @@ extern "C" YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream)
     stream->has_pushback = 0;
 }
 
-extern "C" YUPITER_PUBLIC int yupiter_fflush(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_fflush(yupiter_FILE *stream)
 {
     return yupiter_stream_flush(stream);
 }
 
-} /* namespace yupiter::io */
