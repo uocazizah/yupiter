@@ -5,7 +5,7 @@ Build and run:
 
     ./configure --enable-tests=yes
     make
-    make check
+    make test
 
 The runner is test/run-tests.sh.  It prints one PASS or FAIL per check
 and exits non-zero on any failure.
