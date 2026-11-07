@@ -72,6 +72,15 @@ Python bindings
 
 Build
 ~~~~~
+  * The compiler warning set grew to catch more common C defects:
+    -Wformat=2, -Wformat-security, -Wnull-dereference, -Winit-self,
+    -Wuninitialized, -Wstrict-aliasing=2, -Wstrict-overflow=2,
+    -Wpointer-arith, -Wcast-align, -Wwrite-strings,
+    -Wredundant-decls, -Wmissing-declarations,
+    -Wmissing-include-dirs, -Wnested-externs and -Wjump-misses-init.
+    The C test programs keep their documented -Wno-format exceptions
+    for the conversion suite.  Every file still builds clean under
+    both GNU C and Clang.
   * test/check-freestanding.sh now allows the public stream input
     functions in the shared object's export list.
   * The build-test workflow gains a python-binding job that builds the
