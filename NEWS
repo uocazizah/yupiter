@@ -22,8 +22,13 @@ Interface
 
 Library
 ~~~~~~~
+  * The library core is now implemented in ISO C17 instead of ISO
+    C++23.  All implementation sources use the .c extension, the
+    internal headers use .h, and the build compiles the library with
+    -std=c17.  The public ABI, exported symbols, public headers and
+    freestanding behavior are unchanged.
   * libyupiter.so now exports the input functions consistently on GCC
-    and Clang; their definitions in io/input.cxx carry YUPITER_PUBLIC.
+    and Clang; their definitions in io/input.c carry YUPITER_PUBLIC.
   * yupiter_free_checked releases a live block and reports an invalid,
     foreign, interior, freed or corrupt pointer as
     YUPITER_MEMORY_INVALID_POINTER instead of invoking the fatal
@@ -73,6 +78,10 @@ Build
     wheel and runs its test suite on x86_64 and aarch64.
   * Dependabot now checks GitHub Actions and Cargo daily, and the
     binding uses PyO3 0.30.
+  * The default (silent) build log is now indented for compilation,
+    assembly, archive, link, clean and test steps.
+  * The test target is now invoked as "make test" instead of
+    "make check"; "make check" remains available as an alias.
 
 Testing
 ~~~~~~~
@@ -99,7 +108,7 @@ Documentation
 
 Released 23 October 2026.
 
-This patch keeps the C17 interface, the C++23 implementation and the
+This patch keeps the C17 interface, the C17 implementation and the
 ABI unchanged.
 
 Build
@@ -121,7 +130,7 @@ Build
 
 Released 22 October 2026.
 
-This patch keeps the C17 interface, the C++23 implementation and the
+This patch keeps the C17 interface, the C17 implementation and the
 ABI unchanged.
 
 Build
@@ -151,7 +160,7 @@ are <yupiter.h> and <yupiter.hpp>, every exported symbol begins with
 version restarts at 1.0.0 and the shared object has SOVERSION 1.
 
 The shape of the library is unchanged: the public interface is ISO
-C17, the implementation is ISO C++23 compiled freestanding, a program
+C17, the implementation is ISO C17 compiled freestanding, a program
 written in C and a program written in C++ link the same archive, and
 the static archive still supplies its own entry point without a C
 library or a C++ runtime.  Within the 1.x series the exported symbols,
@@ -204,7 +213,7 @@ Build
   * The CMake build is replaced by a GNU Makefile driven by a POSIX
     ./configure script.  ./configure detects Linux and the target
     architecture, validates that the compiler can build the freestanding
-    C++23 implementation, and writes config.mk; make then builds both
+    C17 implementation, and writes config.mk; make then builds both
     libraries by default.
   * libyupiter.a is the freestanding archive and includes the startup
     file.  libyupiter.so.1.0.0 is the hosted shared object: it excludes
@@ -256,7 +265,7 @@ Packaging
 
 Released 19 October 2026.
 
-This release keeps the ISO C17 public interface and the ISO C++23
+This release keeps the ISO C17 public interface and the ISO C17
 implementation language unchanged.  It concentrates on small, low-risk
 improvements to the Linux system-call layer, the stream output path and
 the internal string helpers; every exported symbol keeps its name,
@@ -352,8 +361,8 @@ Documentation
 Released 18 October 2026.
 
 This is a major release.  The implementation moved from ISO C17 to ISO
-C++23 and Linux on x86_64 joined Linux on aarch64, so what builds the
-library changed: CMake 3.20 or newer, a C++23 compiler and a standard
+C17 and Linux on x86_64 joined Linux on aarch64, so what builds the
+library changed: CMake 3.20 or newer, a C17 compiler and a standard
 library with freestanding mode.  The public interface is unchanged -
 include/libstdoc.h is still ISO C17, every exported function keeps its
 name, signature and C linkage, and every structure layout is the same -
@@ -410,8 +419,8 @@ Library
     documented as the platform layer of the input release that
     stdoc_stdin is waiting for, rather than left looking like dead
     code.
-  * The implementation moved from ISO C17 to ISO C++23.  Every file
-    under io/ and mem/ is now a .cxx translation unit built as C++23
+  * The implementation moved from ISO C17 to ISO C17.  Every file
+    under io/ and mem/ is now a .cxx translation unit built as C17
     inside the stdoc namespace, with scoped enumerations, "constexpr"
     and "static_assert" in place of macros and a "constinit" guarantee
     on the stream objects and the heap arena: an object that would need
@@ -478,7 +487,7 @@ Build
     configure with a message instead of being given another one's
     implementation.
   * CMake 3.20 or newer is required - the first release that knows
-    C++23 - and the C++ compiler is no longer optional: the project
+    C17 - and the C++ compiler is no longer optional: the project
     asks for the standard with target_compile_features and rejects a
     compiler that does not provide it.  A configure-time probe compiles
     the freestanding C++ headers the implementation includes
@@ -492,7 +501,7 @@ Build
     -Wzero-as-null-pointer-constant - and with -fno-exceptions,
     -fno-rtti and -fno-threadsafe-statics added to the freestanding
     flags it already used.  The C test programs keep the C set.
-  * The clang-tidy job checks the C++ implementation files as C++23 and
+  * The clang-tidy job checks the C++ implementation files as C17 and
     the remaining C files as C17, each with the warning flags of its
     language.
   * The x86_64 workflow
@@ -554,9 +563,9 @@ Documentation
     for a short write and any architecture or operating system other
     than the one the project is built for.
   * docs/repository, docs/building, docs/testing, docs/io, docs/heap
-    and docs/formatting record the new file names and the C++23
+    and docs/formatting record the new file names and the C17
     implementation, and docs/building states the toolchain the project
-    now needs: CMake 3.20 or newer, a C++23 compiler and a standard
+    now needs: CMake 3.20 or newer, a C17 compiler and a standard
     library that supports freestanding mode.
   * README, docs/building, docs/testing, docs/io, docs/repository and
     the installed pkg-config description now name both targets, and
