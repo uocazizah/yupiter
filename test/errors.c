@@ -52,7 +52,7 @@
 #include "yupiter_io.h"
 
 typedef int (*print_function)(const char *, ...);
-typedef int (*stream_print_function)(yupiter_FILE *, const char *, ...);
+typedef int (*stream_print_function)(yupiter_stream *, const char *, ...);
 
 static print_function volatile printf_unchecked = yupiter_printf;
 static stream_print_function volatile fprintf_unchecked = yupiter_fprintf;
@@ -75,11 +75,11 @@ static void check(int condition, const char *p_what)
  * A stream bound to a descriptor that does not exist.  Writing to it
  * has to fail, and the failure has to stick.
  */
-static yupiter_FILE broken_stream =
+static yupiter_stream broken_stream =
 {
     .fd = -1,
     .error = 0,
-    .unbuffered = 1,
+    .buffer_mode = YUPITER_BUFFER_UNBUFFERED,
     .length = 0,
     .buffer = { 0 }
 };
