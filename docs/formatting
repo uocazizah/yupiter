@@ -29,7 +29,9 @@ Width and precision via number or *.  Length modifiers: hh h l ll z t j.
 Field width and precision are bounded; out-of-range values are clamped.
 
 Not supported: floating point, positional arguments, %n, I/' flags.
-Unrecognised conversions consume their argument and emit nothing.
+Unrecognised conversions emit a literal percent sign and the conversion
+character, and consume no argument.  A trailing percent sign makes the
+call fail.
 
 
 Format checking
