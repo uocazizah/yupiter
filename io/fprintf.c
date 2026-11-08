@@ -36,7 +36,7 @@
 #include "yupiter_io.h"
 
 
-YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream,
+YUPITER_PUBLIC int yupiter_fprintf(yupiter_stream *stream,
                                                const char *format, ...)
 {
     va_list args;
