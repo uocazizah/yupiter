@@ -6,7 +6,7 @@
 //! This module is a thin wrapper around the shared object.  It does not
 //! reimplement allocation or formatting: every operation goes through the
 //! C symbols declared below.  Pointer values are exposed as integers
-//! because the layout of `yupiter_FILE` is private to the library.
+//! because the layout of `yupiter_stream` is private to the library.
 
 use pyo3::exceptions::{PyMemoryError, PyOverflowError, PyValueError};
 use pyo3::prelude::*;
