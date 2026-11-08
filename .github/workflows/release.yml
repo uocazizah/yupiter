@@ -4,8 +4,9 @@
 name: release
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 concurrency:
   group: release-${{ github.ref }}
@@ -15,9 +16,56 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    name: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+
+      - name: Extract release notes from NEWS
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v ver="$version" '
+            $0 == ver { in_section = 1; next }
+            in_section && $0 ~ /^-+$/ {
+              if (!saw_underline) {
+                saw_underline = 1
+                next
+              }
+            }
+            in_section && $0 ~ /^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$/ {
+              exit
+            }
+            in_section { print }
+          ' NEWS > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No NEWS section found for $version" >&2
+            exit 1
+          fi
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md
+
   build-and-upload:
     name: ${{ matrix.arch }}-linux-gnu-${{ matrix.compiler }}
     runs-on: ${{ matrix.runner }}
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -66,6 +114,7 @@ jobs:
       - name: Upload asset to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: ${{ matrix.arch }}-linux-gnu-${{ matrix.compiler }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
