@@ -112,6 +112,13 @@ Documentation
   * Added SECURITY.md, CONTRIBUTING.md and CODE_OF_CONDUCT.md.
 
 
+2.0.0 (unreleased)
+-------------------
+
+Breaking changes are allowed for the planned I/O redesign.  Exported
+symbols, signatures, public structure layouts and documented behavior
+may change in this major release.
+
 1.0.2
 -----
 
