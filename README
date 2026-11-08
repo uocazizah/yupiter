@@ -2,8 +2,9 @@ yupiter
 -------
 
 yupiter is a freestanding C library for Linux on aarch64 and x86_64.
-It provides its own entry point, system-call layer, formatted output
-and allocator, and links without a C library or C++ runtime.
+It provides its own entry point, system-call layer, formatted output,
+input functions, allocator with checked variants, and links without a
+C library or C++ runtime.
 
 The public interface is ISO C17 and usable from C and C++.  The
 implementation is ISO C17, built freestanding.  Other operating
@@ -11,7 +12,7 @@ systems and architectures are rejected at configure time.
 
 Status: stable.  Current release 1.0.2; SOVERSION 1.  Exported symbols,
 signatures, C linkage and public structure layouts are stable within
-the 1.x series.
+the 1.x series.  A PyO3-based Python binding is available in python/.
 
 
 Build
