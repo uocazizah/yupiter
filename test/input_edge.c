@@ -61,7 +61,7 @@ int main(void)
 
     /* ferror on a bad descriptor */
     {
-        static yupiter_FILE bad = { .fd = -1, .unbuffered = 1,
+        static yupiter_stream bad = { .fd = -1, .buffer_mode = YUPITER_BUFFER_UNBUFFERED,
                                     .buffer = { 0 },
                                     .input_buffer = { 0 } };
         check(yupiter_fgetc(&bad) == YUPITER_EOF, "fgetc bad returns EOF");
