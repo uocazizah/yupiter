@@ -122,6 +122,10 @@ int main(void)
     report(PRINTF_UNDEFINED("[%.10s]\n", NULL));
     report(PRINTF_UNDEFINED("[%10s]\n", NULL));
 
+    /* Unrecognised and trailing percent signs. */
+    report(PRINTF_UNDEFINED("[%Q]\n"));
+    report(PRINTF_UNDEFINED("100%"));
+
     /* Percent sign and null pointer. */
     report(PRINTF("[%%]\n"));
     report(PRINTF("[%p]\n", NULL));
