@@ -149,7 +149,7 @@ typedef enum length_modifier
  */
 typedef struct yupiter_output
 {
-    yupiter_FILE *stream;
+    yupiter_stream *stream;
     int         count;
     bool        failed;
     char       *p_scratch;
@@ -657,7 +657,7 @@ static void normalize_signed(intmax_t value,
 
 
 
-int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
+int yupiter_vfprintf(yupiter_stream *stream, const char *format,
                               va_list args)
 {
     yupiter_output   output;
@@ -722,6 +722,12 @@ int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
 
         if (*p_format == '\0')
         {
+            /*
+             * A trailing percent sign has no conversion.  Match the
+             * reference implementation, which reports failure and
+             * discards the call.
+             */
+            output.failed = true;
             break;
         }
 
@@ -1089,7 +1095,14 @@ int yupiter_vfprintf(yupiter_FILE *stream, const char *format,
                 break;
 
             default:
-                /* Unsupported conversion: consume nothing, emit nothing. */
+                /*
+                 * An unrecognised conversion is undefined by the
+                 * standard; match the reference implementation by
+                 * emitting the percent sign and the conversion
+                 * character literally and consuming no argument.
+                 */
+                output_write(&output, "%", 1);
+                output_write(&output, &spec.conversion, 1);
                 break;
         }
     }
