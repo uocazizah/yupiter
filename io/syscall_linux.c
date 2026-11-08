@@ -170,11 +170,23 @@ int yupiter_sys_write(int fd, const void *p_buffer,
 
         address = (uintptr_t)(p_bytes + offset);
 
-        if (yupiter_kernel_result(
-                yupiter_syscall3(syscall_write, (long)(fd),
-                               (long)(address),
-                               (long)(remaining)),
-                &written) != 0)
+        long raw_result;
+
+        raw_result = yupiter_syscall3(syscall_write, (long)(fd),
+                                      (long)(address),
+                                      (long)(remaining));
+
+        /*
+         * A signal may interrupt the system call before it makes
+         * progress.  Retry instead of reporting the interruption as a
+         * failed write.
+         */
+        if (raw_result == -4L)
+        {
+            continue;
+        }
+
+        if (yupiter_kernel_result(raw_result, &written) != 0)
         {
             return -1;
         }
@@ -219,10 +231,19 @@ int yupiter_sys_read(int fd, void *p_buffer, size_t length,
         return -1;
     }
 
-    result = yupiter_syscall3(
-        syscall_read, (long)(fd),
-        (long)((uintptr_t)(p_buffer)),
-        (long)(length));
+    do
+    {
+        result = yupiter_syscall3(
+            syscall_read, (long)(fd),
+            (long)((uintptr_t)(p_buffer)),
+            (long)(length));
+
+        if (result != -4L)
+        {
+            break;
+        }
+    }
+    while (1);
 
     return yupiter_kernel_result(result, p_count);
 }
@@ -231,7 +252,16 @@ int yupiter_sys_close(int fd)
 {
     long result;
 
-    result = yupiter_syscall3(syscall_close, (long)(fd), 0L, 0L);
+    do
+    {
+        result = yupiter_syscall3(syscall_close, (long)(fd), 0L, 0L);
+
+        if (result != -4L)
+        {
+            break;
+        }
+    }
+    while (1);
 
     return yupiter_kernel_result(result, NULL);
 }
