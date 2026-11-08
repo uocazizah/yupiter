@@ -54,10 +54,10 @@
  * part of the interface so that a consumer can check at compile time
  * which release it was built against.
  */
-#define YUPITER_VERSION_MAJOR 1
+#define YUPITER_VERSION_MAJOR 2
 #define YUPITER_VERSION_MINOR 0
-#define YUPITER_VERSION_PATCH 2
-#define YUPITER_VERSION_STRING "1.0.2"
+#define YUPITER_VERSION_PATCH 0
+#define YUPITER_VERSION_STRING "2.0.0"
 
 /*
  * Symbol visibility.
@@ -121,7 +121,7 @@ extern "C" {
  * pointer to an object that is not a yupiter stream, is undefined
  * behaviour.
  */
-typedef struct yupiter_FILE yupiter_FILE;
+typedef struct yupiter_stream yupiter_stream;
 
 /*
  * Standard streams.
@@ -135,9 +135,9 @@ typedef struct yupiter_FILE yupiter_FILE;
  * valid for the whole program lifetime, but the stream itself is not
  * modified through the pointer.
  */
-extern YUPITER_PUBLIC yupiter_FILE *const yupiter_stdout;
-extern YUPITER_PUBLIC yupiter_FILE *const yupiter_stderr;
-extern YUPITER_PUBLIC yupiter_FILE *const yupiter_stdin;
+extern YUPITER_PUBLIC yupiter_stream *const yupiter_stdout;
+extern YUPITER_PUBLIC yupiter_stream *const yupiter_stderr;
+extern YUPITER_PUBLIC yupiter_stream *const yupiter_stdin;
 
 /*
  * Write the formatted string described by "format" to yupiter_stdout.
@@ -193,7 +193,7 @@ YUPITER_PUBLIC int yupiter_printf(const char *format, ...)
  * yupiter_stdout.  See yupiter_printf for the supported conversions and
  * for the meaning of the return value.
  */
-YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream, const char *format,
+YUPITER_PUBLIC int yupiter_fprintf(yupiter_stream *stream, const char *format,
                                    ...) YUPITER_PRINTF_FORMAT(2, 3);
 
 /*
@@ -224,15 +224,15 @@ YUPITER_PUBLIC int yupiter_fprintf(yupiter_FILE *stream, const char *format,
  * buffered output stream to the operating system.
  */
 YUPITER_PUBLIC int yupiter_getchar(void);
-YUPITER_PUBLIC int yupiter_fgetc(yupiter_FILE *stream);
-YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stream);
+YUPITER_PUBLIC int yupiter_fgetc(yupiter_stream *stream);
+YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_stream *stream);
 YUPITER_PUBLIC size_t yupiter_fread(void *ptr, size_t size, size_t nmemb,
-                                    yupiter_FILE *stream);
-YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_FILE *stream);
-YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream);
-YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream);
-YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream);
-YUPITER_PUBLIC int yupiter_fflush(yupiter_FILE *stream);
+                                    yupiter_stream *stream);
+YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_stream *stream);
+YUPITER_PUBLIC int yupiter_feof(yupiter_stream *stream);
+YUPITER_PUBLIC int yupiter_ferror(yupiter_stream *stream);
+YUPITER_PUBLIC void yupiter_clearerr(yupiter_stream *stream);
+YUPITER_PUBLIC int yupiter_fflush(yupiter_stream *stream);
 
 /*
  * Dynamic memory.
