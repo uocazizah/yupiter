@@ -17,12 +17,12 @@ YUPITER_PUBLIC int yupiter_getchar(void)
     return yupiter_fgetc(yupiter_stdin);
 }
 
-YUPITER_PUBLIC int yupiter_fgetc(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_fgetc(yupiter_stream *stream)
 {
     return yupiter_stream_getc(stream);
 }
 
-YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stream)
+YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_stream *stream)
 {
     int   index;
     int   value;
@@ -61,7 +61,7 @@ YUPITER_PUBLIC char *yupiter_fgets(char *s, int n, yupiter_FILE *stream)
 }
 
 YUPITER_PUBLIC size_t yupiter_fread(void *ptr, size_t size,
-                                    size_t nmemb, yupiter_FILE *stream)
+                                    size_t nmemb, yupiter_stream *stream)
 {
     size_t total;
     size_t produced;
@@ -98,12 +98,12 @@ YUPITER_PUBLIC size_t yupiter_fread(void *ptr, size_t size,
     return produced / size;
 }
 
-YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_ungetc(int c, yupiter_stream *stream)
 {
     return yupiter_stream_ungetc(stream, c);
 }
 
-YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_feof(yupiter_stream *stream)
 {
     if (stream == NULL)
     {
@@ -113,7 +113,7 @@ YUPITER_PUBLIC int yupiter_feof(yupiter_FILE *stream)
     return stream->eof;
 }
 
-YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_ferror(yupiter_stream *stream)
 {
     if (stream == NULL)
     {
@@ -123,7 +123,7 @@ YUPITER_PUBLIC int yupiter_ferror(yupiter_FILE *stream)
     return stream->error;
 }
 
-YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream)
+YUPITER_PUBLIC void yupiter_clearerr(yupiter_stream *stream)
 {
     if (stream == NULL)
     {
@@ -135,7 +135,7 @@ YUPITER_PUBLIC void yupiter_clearerr(yupiter_FILE *stream)
     stream->has_pushback = 0;
 }
 
-YUPITER_PUBLIC int yupiter_fflush(yupiter_FILE *stream)
+YUPITER_PUBLIC int yupiter_fflush(yupiter_stream *stream)
 {
     return yupiter_stream_flush(stream);
 }
