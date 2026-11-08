@@ -81,12 +81,27 @@
  * to fill, which is how stderr keeps its promised ordering.  "length"
  * is the number of bytes currently staged in "buffer".
  */
-struct yupiter_FILE
+/*
+ * Output buffering policy.
+ *
+ * UNBUFFERED pushes every write to the operating system immediately.
+ * LINE flushes when a newline is staged.  FULL flushes only when the
+ * staging buffer fills or the caller flushes explicitly.
+ */
+enum yupiter_buffer_mode
 {
-    int    fd;
-    int    error;
-    int    unbuffered;
-    int    eof;
+    YUPITER_BUFFER_UNBUFFERED = 0,
+    YUPITER_BUFFER_LINE = 1,
+    YUPITER_BUFFER_FULL = 2
+};
+
+struct yupiter_stream
+{
+    int                  fd;
+    int                  error;
+    /* Output buffering policy for this stream. */
+    enum yupiter_buffer_mode buffer_mode;
+    int                  eof;
     int    pushback;
     int    has_pushback;
     size_t length;
@@ -163,10 +178,10 @@ long yupiter_syscall3(long number, long arg1, long arg2, long arg3);
  * the direct path have reached the operating system and are not
  * affected.
  */
-int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
+int yupiter_stream_write(yupiter_stream *stream, const void *p_buffer,
                          size_t length);
-int yupiter_stream_flush(yupiter_FILE *stream);
-void yupiter_stream_discard(yupiter_FILE *stream);
+int yupiter_stream_flush(yupiter_stream *stream);
+void yupiter_stream_discard(yupiter_stream *stream);
 
 /*
  * Input helpers (io/input.cxx).
@@ -185,17 +200,17 @@ void yupiter_stream_discard(yupiter_FILE *stream);
  * the byte on success and YUPITER_EOF when a byte is already pushed
  * back or "c" is YUPITER_EOF.
  */
-int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer, size_t length,
+int yupiter_stream_read(yupiter_stream *stream, void *p_buffer, size_t length,
                         size_t *p_count);
-int yupiter_stream_getc(yupiter_FILE *stream);
-int yupiter_stream_ungetc(yupiter_FILE *stream, int c);
+int yupiter_stream_getc(yupiter_stream *stream);
+int yupiter_stream_ungetc(yupiter_stream *stream, int c);
 
 /*
  * Formatting engine (io/vfprintf.cxx).
  *
  * Returns the number of characters written, or -1 on failure.
  */
-int yupiter_vfprintf(yupiter_FILE *stream, const char *format, va_list args);
+int yupiter_vfprintf(yupiter_stream *stream, const char *format, va_list args);
 
 /*
  * Internal string helpers.
