@@ -66,10 +66,10 @@
  * unbuffered as well, for the opposite reason: nothing writes to it,
  * so a buffer it could never flush would be dead space in the object.
  */
-yupiter_FILE yupiter_stream_stdin = {
+yupiter_stream yupiter_stream_stdin = {
     0,   /* fd            */
     0,   /* error         */
-    1,   /* unbuffered    */
+    YUPITER_BUFFER_UNBUFFERED, /* buffer_mode */
     0,   /* eof           */
     0,   /* pushback      */
     0,   /* has_pushback  */
@@ -80,10 +80,10 @@ yupiter_FILE yupiter_stream_stdin = {
     {0}   /* input_buffer  */ 
 };
 
-yupiter_FILE yupiter_stream_stdout = {
+yupiter_stream yupiter_stream_stdout = {
     1,   /* fd            */
     0,   /* error         */
-    0,   /* buffered      */
+    YUPITER_BUFFER_LINE, /* buffer_mode */
     0,   /* eof           */
     0,   /* pushback      */
     0,   /* has_pushback  */
@@ -94,10 +94,10 @@ yupiter_FILE yupiter_stream_stdout = {
     {0}   /* input_buffer  */ 
 };
 
-yupiter_FILE yupiter_stream_stderr = {
+yupiter_stream yupiter_stream_stderr = {
     2,   /* fd            */
     0,   /* error         */
-    1,   /* unbuffered    */
+    YUPITER_BUFFER_UNBUFFERED, /* buffer_mode */
     0,   /* eof           */
     0,   /* pushback      */
     0,   /* has_pushback  */
@@ -109,14 +109,14 @@ yupiter_FILE yupiter_stream_stderr = {
 };
 
 
-YUPITER_PUBLIC yupiter_FILE *const yupiter_stdin =
+YUPITER_PUBLIC yupiter_stream *const yupiter_stdin =
     &yupiter_stream_stdin;
-YUPITER_PUBLIC yupiter_FILE *const yupiter_stdout =
+YUPITER_PUBLIC yupiter_stream *const yupiter_stdout =
     &yupiter_stream_stdout;
-YUPITER_PUBLIC yupiter_FILE *const yupiter_stderr =
+YUPITER_PUBLIC yupiter_stream *const yupiter_stderr =
     &yupiter_stream_stderr;
 
-int yupiter_stream_flush(yupiter_FILE *stream)
+int yupiter_stream_flush(yupiter_stream *stream)
 {
     size_t length;
 
@@ -148,7 +148,7 @@ int yupiter_stream_flush(yupiter_FILE *stream)
     return 0;
 }
 
-void yupiter_stream_discard(yupiter_FILE *stream)
+void yupiter_stream_discard(yupiter_stream *stream)
 {
     if (stream == NULL)
     {
@@ -173,7 +173,7 @@ void yupiter_stream_discard(yupiter_FILE *stream)
  * already repeats a short write until the whole payload has been
  * accepted.
  */
-int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
+int yupiter_stream_write(yupiter_stream *stream, const void *p_buffer,
                                   size_t length)
 {
     const unsigned char *p_bytes;
@@ -213,7 +213,7 @@ int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
          * buffered payload of exactly YUPITER_BUFFER_SIZE bytes.
          */
         if ((stream->length == 0) &&
-            ((stream->unbuffered != 0) ||
+            ((stream->buffer_mode == YUPITER_BUFFER_UNBUFFERED) ||
              (remaining > YUPITER_BUFFER_SIZE)))
         {
             if (yupiter_sys_write(stream->fd, p_bytes, remaining) != 0)
@@ -266,7 +266,8 @@ int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
         p_bytes = p_bytes + taken;
         remaining = remaining - taken;
 
-        if (newline != 0)
+        if ((newline != 0) &&
+            (stream->buffer_mode == YUPITER_BUFFER_LINE))
         {
             if (yupiter_stream_flush(stream) != 0)
             {
@@ -281,7 +282,7 @@ int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
      * pushed out here.  On a buffered stream this is a no-op and the
      * caller decides when to flush.
      */
-    if (stream->unbuffered != 0)
+    if (stream->buffer_mode == YUPITER_BUFFER_UNBUFFERED)
     {
         if (yupiter_stream_flush(stream) != 0)
         {
@@ -292,7 +293,7 @@ int yupiter_stream_write(yupiter_FILE *stream, const void *p_buffer,
     return 0;
 }
 
-int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
+int yupiter_stream_read(yupiter_stream *stream, void *p_buffer,
                                  size_t length, size_t *p_count)
 {
     unsigned char       *p_destination;
@@ -330,6 +331,19 @@ int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
     while (remaining > 0)
     {
         size_t available;
+
+        /*
+         * A byte pushed back with ungetc takes precedence over any
+         * bytes still held in the input buffer.
+         */
+        if (stream->has_pushback != 0)
+        {
+            p_destination[produced] = (unsigned char)(stream->pushback);
+            stream->has_pushback = 0;
+            produced = produced + 1;
+            remaining = remaining - 1;
+            continue;
+        }
 
         if (stream->input_pos >= stream->input_size)
         {
@@ -385,7 +399,7 @@ int yupiter_stream_read(yupiter_FILE *stream, void *p_buffer,
     return 0;
 }
 
-int yupiter_stream_getc(yupiter_FILE *stream)
+int yupiter_stream_getc(yupiter_stream *stream)
 {
     int         value;
 
@@ -444,7 +458,7 @@ int yupiter_stream_getc(yupiter_FILE *stream)
     }
 }
 
-int yupiter_stream_ungetc(yupiter_FILE *stream, int c)
+int yupiter_stream_ungetc(yupiter_stream *stream, int c)
 {
     if (stream == NULL)
     {
